@@ -1,0 +1,3661 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  Tracker 1.3.0 (blank edition, built 2026-10-06 from 4.12.0)
+  A single-file process tracker. Everything it knows about your work is
+  what you put into it; nothing ships inside.
+-->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tracker</title>
+<meta name="theme-color" content="#0B1116">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tracker">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root{
+  --ink:#F2F5F8; --ink-2:#B9C4CF; --paper:#0B1116; --surface:#131B24;
+  --rule:rgba(255,255,255,.075); --rule-soft:rgba(255,255,255,.045); --muted:#8B96A3;
+  --g0:#8FB3F5; --g1:#3BC4B0; --overdue:#FF7C5C; --soon:#E0A93D;
+  --done:#4BC88E; --carried:#B8A4F0; --focus:#8FD6FF;
+  --glass:rgba(17,23,32,.55); --glass-soft:rgba(255,255,255,.05);
+  --accent:#8FD6FF;
+
+  --r-xs:9px; --r-sm:13px; --r-md:18px; --r-lg:24px; --r-pill:999px;
+
+  --spec:inset 0 1px 0 rgba(255,255,255,.11);
+  --lift:0 14px 34px -12px rgba(0,0,0,.62);
+  --lift-sm:0 8px 20px -10px rgba(0,0,0,.55);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{background:
+    radial-gradient(760px 420px at 8% -6%, rgba(143,214,255,.10), transparent 60%),
+    radial-gradient(680px 380px at 96% 104%, rgba(59,196,176,.09), transparent 58%),
+    radial-gradient(520px 300px at 62% 40%, rgba(255,255,255,.025), transparent 70%),
+    var(--paper);
+  color:var(--ink);
+  font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;}
+button{cursor:pointer;}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+.tnum{font-family:"Cascadia Mono",Consolas,ui-monospace,monospace;font-variant-numeric:tabular-nums;}
+
+#shell{display:flex;min-height:100vh;}
+
+#rail{width:196px;flex:0 0 196px;
+  background:linear-gradient(168deg, rgba(14,21,29,.82), rgba(8,12,17,.94));
+  color:#E8EBF0;backdrop-filter:blur(26px) saturate(1.4);
+  border-right:1px solid var(--rule);box-shadow:var(--spec), 1px 0 0 rgba(0,0,0,.4);
+  padding:18px 10px 12px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
+#rail .brand{padding:0 10px 13px;border-bottom:1px solid var(--rule);margin-bottom:10px;}
+#rail .brand b{display:block;font-size:13.5px;color:#F4F8FC;font-weight:600;letter-spacing:-.015em;}
+#rail .brand span{display:block;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:#6F7C8A;margin-top:4px;}
+.closedhead{display:flex;align-items:baseline;gap:12px;max-width:640px;}
+.closedhead .sec{flex:1;}
+.selbox{flex:0 0 auto;width:18px;height:18px;margin-top:2px;padding:0;position:relative;
+  border-radius:5px;border:1.5px solid rgba(255,255,255,.22);background:rgba(255,255,255,.04);
+  box-shadow:var(--spec);transition:all .15s;}
+.selbox:hover{border-color:var(--accent);}
+.selbox.on{background:linear-gradient(180deg,#B6E4FF,var(--accent));border-color:var(--accent);}
+.selbox.on:after{content:"";position:absolute;left:5px;top:2px;width:4px;height:8px;
+  border:solid #08222E;border-width:0 2px 2px 0;transform:rotate(42deg);}
+.rr.selected{background:linear-gradient(90deg, rgba(143,214,255,.10), transparent 60%);}
+@keyframes bulkin{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.bulkbar{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:80;
+  display:flex;align-items:center;gap:10px;width:max-content;max-width:calc(100vw - 32px);
+  padding:11px 15px;border-radius:var(--r-pill);border:1px solid rgba(143,214,255,.3);
+  background:linear-gradient(180deg, rgba(46,66,86,.96), rgba(28,40,54,.95));
+  backdrop-filter:blur(20px) saturate(1.3);
+  font-size:12px;color:var(--ink-2);
+  box-shadow:var(--spec), 0 20px 50px -16px rgba(0,0,0,.8);
+  animation:bulkin .2s cubic-bezier(.2,.9,.3,1);}
+.bulkbar b{color:var(--ink);font-size:13px;}
+.bulkbar .sp{width:4px;}
+.startlist{display:flex;flex-direction:column;gap:11px;}
+.startlist>div{display:flex;gap:12px;align-items:baseline;font-size:12.5px;color:var(--ink-2);line-height:1.5;}
+.startlist>div>span{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.08);
+  display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--ink);}
+.startlist b{color:var(--ink);font-weight:600;}
+.verline{max-width:640px;margin:0 0 22px;padding:11px 15px;border-radius:var(--r-sm);
+  border:1px solid var(--rule);background:rgba(255,255,255,.03);
+  font-size:11.5px;color:var(--muted);line-height:1.6;}
+.verline b{color:var(--ink-2);font-weight:600;}
+.navbtn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;
+  background:none;border:0;color:#A9B4C1;border-radius:var(--r-sm);
+  padding:8px 11px;text-align:left;font-size:12.5px;transition:all .18s;cursor:pointer;margin-bottom:2px;}
+.navbtn:hover{color:#EAF0F6;background:rgba(255,255,255,.045);}
+.navbtn.on{color:#F4F8FC;
+  background:linear-gradient(96deg, rgba(143,214,255,.22), rgba(255,255,255,.03));
+  box-shadow:var(--spec), 0 0 20px -6px rgba(143,214,255,.55);}
+.navbtn .pill{font-family:"Cascadia Mono",Consolas,monospace;font-size:10px;font-weight:700;
+  background:var(--carried);color:#1A1233;border-radius:var(--r-pill);padding:1px 6px;min-width:18px;text-align:center;}
+.navbtn .pill.zero{display:none;}
+.navsep{height:1px;margin:9px 4px;background:linear-gradient(90deg, rgba(255,255,255,.09), transparent 75%);}
+#rail .spacer{flex:1;}
+#rail .foot{padding-top:11px;border-top:1px solid var(--rule);}
+#rail .foot button{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--rule);color:#C3CCD7;
+  padding:8px;font-size:11.5px;border-radius:var(--r-sm);margin-bottom:8px;transition:all .18s;
+  backdrop-filter:blur(10px);box-shadow:var(--spec);}
+#rail .foot button:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.16);color:#EFEFF4;}
+#tabWarn{font-size:10px;color:var(--soon);padding:6px 12px 0;line-height:1.4;display:none;}
+#tabWarn .linkbtn{font-size:10px;color:var(--soon);}
+#storeWarn{font-size:10px;color:#F8A5A0;padding:6px 12px 0;line-height:1.3;display:none;}
+#main{flex:1;min-width:0;padding:26px 32px 70px;max-width:1180px;overflow-x:auto;}
+#shell.panelon #main{max-width:none;}
+
+.eyebrow{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+h1{font-family:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  font-size:25px;font-weight:600;letter-spacing:-.022em;margin:3px 0 4px;}
+h2.sec{font-size:15px;font-weight:600;letter-spacing:-.01em;margin:28px 0 9px;}
+.dk{font-size:14px;font-weight:600;margin-bottom:6px;}
+.dk:before{content:"● ";}
+.dk.ok{color:var(--done);} .dk.warn{color:var(--soon);} .dk.bad{color:var(--overdue);}
+.dkp{font-size:12.5px;color:var(--muted);line-height:1.6;margin:0;}
+.dkp code{background:rgba(255,255,255,.06);padding:2px 6px;border-radius:6px;font-size:11.5px;}
+.dkrow{font-size:12px;color:var(--ink-2);margin-top:9px;}
+#lastSaved.ok{color:var(--done)!important;}
+#lastSaved.bad{color:var(--overdue)!important;}
+.libhead{font-size:13px;font-weight:600;margin:24px 0 9px;display:flex;align-items:baseline;gap:8px;}
+.libhead span{font-size:11px;font-weight:400;color:var(--muted);}
+.lede{color:var(--muted);font-size:13px;margin:0 0 20px;}
+
+.card{border-radius:var(--r-lg);border:1px solid var(--rule);overflow:hidden;
+  background:linear-gradient(180deg, rgba(22,31,42,.5), rgba(14,20,28,.42));
+  backdrop-filter:blur(20px) saturate(1.25);box-shadow:var(--spec), var(--lift);}
+
+.btn{background:linear-gradient(180deg, rgba(143,214,255,.20), rgba(143,214,255,.10));
+  color:#F0F6FA;border:1px solid rgba(143,214,255,.32);
+  padding:8px 15px;border-radius:var(--r-pill);font-size:12.5px;font-weight:500;
+  transition:all .18s;cursor:pointer;backdrop-filter:blur(12px);box-shadow:var(--spec);}
+.btn:hover{background:linear-gradient(180deg, rgba(143,214,255,.30), rgba(143,214,255,.16));
+  border-color:rgba(143,214,255,.5);box-shadow:var(--spec), 0 0 20px -6px rgba(143,214,255,.6);}
+.btn:active{transform:scale(0.975);}
+.btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+.btn.ghost{background:rgba(255,255,255,.05);color:var(--ink-2);border-color:var(--rule);
+  backdrop-filter:blur(12px);box-shadow:var(--spec);}
+.btn.ghost:hover{background:rgba(255,255,255,.09);color:var(--ink);box-shadow:var(--spec);}
+.btn.danger{background:rgba(255,124,92,.14);color:var(--overdue);border:1px solid rgba(255,124,92,.32);
+  backdrop-filter:blur(12px);box-shadow:var(--spec);}
+.btn.danger:hover{background:rgba(255,124,92,.2);box-shadow:var(--spec), 0 0 16px -4px rgba(255,124,92,.5);}
+.btn.sm{padding:5px 12px;font-size:11px;}
+.btn[disabled]{opacity:.32;cursor:not-allowed;pointer-events:none;box-shadow:none;}
+
+.tag{display:inline-block;font-family:"Cascadia Mono",Consolas,monospace;
+  font-size:9px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 8px;border-radius:var(--r-pill);border:1px solid;
+  vertical-align:middle;}
+.tag.g0{color:var(--g0);border-color:rgba(143,179,245,.3);background:rgba(143,179,245,.11);}
+.tag.g1{color:var(--g1);border-color:rgba(59,196,176,.3);background:rgba(59,196,176,.11);}
+.tag.plain{color:var(--muted);border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.05);}
+.owner{font-family:"Cascadia Mono",Consolas,monospace;font-size:9px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 8px;border-radius:var(--r-pill);
+  background:rgba(255,255,255,.06);color:var(--muted);}
+.owner.hra{background:rgba(255,255,255,.14);color:#EAF0F6;}
+.owner.auto{background:rgba(255,255,255,.045);color:#7E8A97;}
+.owner.custom{background:rgba(255,255,255,.09);color:#C3CCD7;}
+.empty{padding:38px 20px;text-align:center;color:var(--muted);font-size:13px;}
+.empty b{display:block;color:var(--ink);font-size:14px;margin-bottom:5px;}
+label.f{display:block;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;margin:0 0 7px;}
+input[type=text],input[type=date],input[type=number],input[type=time],select,textarea{
+  width:100%;padding:9px 12px;border:1px solid var(--rule);border-radius:var(--r-sm);
+  background:rgba(255,255,255,.04);color:var(--ink);transition:all .18s;box-shadow:var(--spec);}
+input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,
+input[type=time]:focus,select:focus,textarea:focus{
+  outline:none;border-color:rgba(143,214,255,.6);
+  box-shadow:var(--spec), 0 0 0 3px rgba(143,214,255,.16);}
+textarea{resize:vertical;min-height:74px;line-height:1.5;}
+input[type=date]::-webkit-calendar-picker-indicator,
+input[type=time]::-webkit-calendar-picker-indicator{
+  filter:invert(1);opacity:.62;cursor:pointer;
+  width:19px;height:19px;padding:0;margin-left:6px;transition:opacity .15s;}
+input[type=date]:hover::-webkit-calendar-picker-indicator,
+input[type=date]:focus::-webkit-calendar-picker-indicator,
+input[type=time]:hover::-webkit-calendar-picker-indicator,
+input[type=time]:focus::-webkit-calendar-picker-indicator{opacity:1;}
+.dateinline::-webkit-calendar-picker-indicator{width:17px;height:17px;margin-left:4px;}
+.hint{font-size:11px;color:var(--muted);margin-top:7px;}
+
+.spine{border-left:1.5px solid rgba(255,255,255,.09);margin-left:88px;}
+.daygroup{position:relative;padding-bottom:6px;}
+.dayhead{position:relative;padding:15px 0 8px 20px;}
+.dayhead .lbl{font-size:12.5px;font-weight:600;letter-spacing:.01em;}
+.dayhead .sub{font-size:10.5px;color:var(--muted);margin-top:1px;}
+.dayhead .dot{position:absolute;left:-8px;top:19px;width:14px;height:14px;border-radius:50%;
+  background:var(--paper);border:2px solid rgba(255,255,255,.16);}
+.daygroup.od .dot{background:var(--carried);border-color:var(--carried);
+  box-shadow:0 0 16px -2px rgba(184,164,240,.75);}
+.daygroup.today .dot{background:var(--accent);border-color:var(--accent);
+  box-shadow:0 0 18px -2px rgba(143,214,255,.85);}
+.daygroup.od .lbl{color:var(--carried);}
+.daygroup.today .lbl{color:var(--accent);}
+
+.row{display:flex;align-items:flex-start;gap:12px;margin:0 0 7px 20px;padding:12px 14px;
+  border-radius:var(--r-md);border:1px solid var(--rule);
+  background:linear-gradient(180deg, rgba(32,43,57,.62), rgba(22,31,42,.5));
+  box-shadow:var(--spec), var(--lift-sm);}
+.row.od{border-color:rgba(184,164,240,.3);border-left:1px solid rgba(184,164,240,.3);
+  background:linear-gradient(180deg, rgba(56,32,27,.6), rgba(30,20,20,.48));}
+.tick{flex:0 0 auto;width:20px;height:20px;margin-top:1px;padding:0;position:relative;
+  border-radius:var(--r-xs);border:1.5px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.04);box-shadow:var(--spec);transition:all .18s;line-height:1;font-size:0;}
+.tick:hover{border-color:var(--accent);box-shadow:var(--spec), 0 0 12px -3px var(--accent);}
+.tick.on{background:linear-gradient(180deg,#5FD9A0,var(--done));border-color:var(--done);
+  box-shadow:var(--spec), 0 0 14px -3px rgba(75,200,142,.8);}
+.tick.on:after{content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;
+  border:solid #06301D;border-width:0 2.5px 2.5px 0;transform:rotate(42deg);}
+.tick[disabled]{opacity:.32;cursor:not-allowed;}
+
+.bd{flex:1;min-width:0;}
+.t1{font-size:13.5px;font-weight:550;letter-spacing:-.005em;}
+.t2{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.5;white-space:pre-wrap;}
+.t2.stepnote{border-left:2px solid var(--rule);padding-left:8px;margin-top:6px;}
+.who{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:7px;font-size:11px;color:var(--muted);}
+.who a{color:var(--ink-2);cursor:pointer;text-decoration:none;
+  border-bottom:1px solid rgba(143,214,255,.32);}
+.who a:hover{color:var(--accent);border-bottom-color:var(--accent);}
+.row.rec{background:linear-gradient(180deg, rgba(24,38,44,.55), rgba(17,27,33,.46));
+  border-color:rgba(59,196,176,.16);}
+
+#cols{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding-bottom:14px;}
+.col{flex:1 1 272px;min-width:188px;max-width:340px;
+  display:flex;flex-direction:column;min-height:150px;overflow:hidden;
+  border-radius:var(--r-lg);border:1px solid var(--rule);
+  background:
+    radial-gradient(240px 130px at 50% -10%, rgba(255,255,255,.05), transparent 70%),
+    linear-gradient(180deg, rgba(26,35,47,.62), rgba(16,23,31,.5));
+  backdrop-filter:blur(20px) saturate(1.3);box-shadow:var(--spec), var(--lift);}
+.col.t-prog{background:
+    radial-gradient(240px 130px at 50% -10%, rgba(143,214,255,.16), transparent 70%),
+    linear-gradient(180deg, rgba(23,36,50,.62), rgba(15,23,32,.5));
+  border-color:rgba(143,214,255,.16);}
+.col.t-wait{background:
+    radial-gradient(240px 130px at 50% -10%, rgba(224,169,61,.16), transparent 70%),
+    linear-gradient(180deg, rgba(38,32,22,.6), rgba(21,18,14,.5));
+  border-color:rgba(224,169,61,.16);}
+.col.t-done{background:
+    radial-gradient(240px 130px at 50% -10%, rgba(75,200,142,.14), transparent 70%),
+    linear-gradient(180deg, rgba(20,36,30,.6), rgba(13,22,19,.5));
+  border-color:rgba(75,200,142,.15);}
+.col.dragover{border-color:var(--focus);box-shadow:var(--spec), 0 0 26px -6px rgba(143,214,255,.6);}
+.colhead{display:flex;align-items:center;gap:8px;padding:13px 15px 11px;border-bottom:1px solid var(--rule);}
+.colhead .nm{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;flex:1;min-width:0;color:var(--ink-2);}
+.colhead .ct{font-family:"Cascadia Mono",Consolas,monospace;font-size:10.5px;color:var(--muted);
+  background:rgba(255,255,255,.07);padding:2px 7px;border-radius:var(--r-pill);}
+.colhead .x{background:none;border:0;color:var(--muted);font-size:15px;line-height:1;padding:0 2px;}
+.colhead .x:hover{color:var(--overdue);}
+.colbody{padding:11px;display:flex;flex-direction:column;gap:9px;flex:1;}
+.kc{padding:12px 13px;border-radius:var(--r-md);border:1px solid var(--rule);cursor:grab;
+  background:linear-gradient(180deg, rgba(38,50,65,.66), rgba(26,35,47,.54));
+  box-shadow:var(--spec), var(--lift-sm);transition:all .18s;}
+.kc:hover{border-color:rgba(143,214,255,.42);
+  box-shadow:var(--spec), 0 0 22px -6px rgba(143,214,255,.7);}
+.kc.dragging{opacity:.42;}
+.kc .nm{font-size:13.5px;font-weight:600;letter-spacing:-.01em;}
+.kc .meta{font-size:10.5px;color:var(--muted);margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.bar{height:4px;background:rgba(255,255,255,.07);border-radius:var(--r-pill);margin-top:10px;overflow:hidden;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.4);}
+.bar i{display:block;height:100%;border-radius:var(--r-pill);
+  background:linear-gradient(90deg, var(--accent), #C9EBFF);
+  box-shadow:0 0 10px -1px rgba(143,214,255,.8);}
+.kc .next{font-size:11px;margin-top:8px;color:var(--ink-2);}
+.kc .next.od{color:var(--carried);font-weight:600;}
+.addcol{padding:6px 13px;border-radius:var(--r-pill);color:var(--muted);font-size:11.5px;
+  border:1px dashed rgba(255,255,255,.16);background:rgba(255,255,255,.03);
+  backdrop-filter:blur(10px);transition:all .18s;}
+.addcol:hover{background:rgba(255,255,255,.06);border-color:rgba(143,214,255,.45);color:var(--ink);}
+.boardhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 20px;}
+.boardhead .lede{margin:0;flex:1;min-width:220px;}
+
+.detailhead{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:16px;}
+.facts{display:flex;gap:2px;flex-wrap:wrap;margin-top:14px;border-radius:var(--r-md);overflow:hidden;
+  border:1px solid var(--rule);box-shadow:var(--spec), var(--lift);backdrop-filter:blur(16px);}
+.fact{flex:1;min-width:130px;padding:11px 15px;
+  background:linear-gradient(180deg, rgba(30,41,55,.6), rgba(20,28,38,.5));}
+.fact .k{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+.fact .v{font-size:13.5px;font-weight:550;margin-top:4px;}
+.notask{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+.notask h2.sec{margin-bottom:8px;}
+.notask .hint{margin:0;}
+.weekhead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:0 0 20px;}
+.weekhead .lede{margin:0;flex:1;min-width:240px;}
+.donerow{align-items:center;}
+.donerow .tick{pointer-events:none;}
+.donerow .sbody{flex:1;min-width:0;}
+.donerow .s1{color:var(--ink-2);}
+.donerow .smeta{margin-top:4px;font-size:10.5px;}
+.donerow .why{font-size:10.5px;color:var(--muted);font-style:italic;flex:0 0 auto;}
+.calhead{display:flex;align-items:center;gap:8px;margin:0 0 14px;flex-wrap:wrap;}
+.calhead h2{font-size:17px;font-weight:600;letter-spacing:-.01em;margin:0 8px;min-width:150px;}
+.calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;}
+.cdow{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 7px 3px;}
+.cday{display:flex;flex-direction:column;gap:3px;align-items:stretch;text-align:left;min-height:88px;
+  padding:7px 7px 6px;border-radius:12px;border:1px solid var(--rule);background:rgba(255,255,255,.035);
+  color:var(--ink-2);font:inherit;cursor:pointer;overflow:hidden;min-width:0;}
+.cday:hover{border-color:rgba(143,214,255,.45);}
+.cday.out{opacity:.4;}
+.cday.off{background:transparent;border-style:dashed;}
+.cday.today{border-color:rgba(143,214,255,.6);}
+.cday.today .cn{color:var(--accent);font-weight:700;}
+.cday.sel{background:rgba(143,214,255,.1);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;}
+.cn{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted);}
+.cchip{display:block;font-size:10px;line-height:1.3;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.08);
+  color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cchip .ct,.cchip .cw{display:block;overflow:hidden;text-overflow:ellipsis;}
+.cchip .cw{font-size:9px;opacity:.72;margin-top:-1px;}
+.cchip.od{background:rgba(184,164,240,.18);color:var(--carried);}
+.cchip.dim{color:var(--muted);background:rgba(255,255,255,.04);}
+.cchip.ghost{background:transparent;box-shadow:inset 0 0 0 1px var(--rule);color:var(--muted);}
+.cchip.hi{box-shadow:inset 2px 0 0 var(--soon);}
+.cmore{font-size:9.5px;color:var(--muted);padding-left:6px;}
+.calday .row{margin-left:0;}
+.row.ghost{border-style:dashed;background:transparent;box-shadow:none;}
+.row.waiting .t1{color:var(--muted);}
+.later{margin:14px 0 0 108px;font-size:11.5px;color:var(--muted);}
+.donefoot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;}
+.rr.pri-high{border-left:3px solid var(--soon);}
+.notecard{margin-bottom:14px;}
+.notebody{padding:14px 16px;font-size:12.5px;color:var(--ink-2);white-space:pre-wrap;line-height:1.6;}
+.notebody.empty2{color:var(--muted);font-style:italic;}
+.phasehead{display:flex;align-items:center;gap:10px;padding:14px 16px 10px;
+  border-bottom:1px solid var(--rule);background:rgba(255,255,255,.028);}
+.phasehead .pn{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);}
+.phasehead .pc{font-size:10.5px;color:var(--muted);}
+.phasehead .pbar{flex:1;max-width:140px;height:3px;border-radius:var(--r-pill);
+  background:rgba(255,255,255,.08);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4);}
+.phasehead .pbar i{display:block;height:100%;border-radius:var(--r-pill);
+  background:linear-gradient(90deg,var(--accent),#C9EBFF);}
+.phasenow{font-size:10px;color:var(--muted);margin-top:5px;
+  font-family:"Cascadia Mono",Consolas,monospace;letter-spacing:.04em;}
+.libphase{font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);padding:14px 16px 7px;border-bottom:1px solid var(--rule-soft);
+  background:rgba(255,255,255,.025);}
+.step{display:flex;gap:13px;padding:14px 16px;border-bottom:1px solid var(--rule-soft);position:relative;}
+.step:last-child{border-bottom:0;}
+.step.blocked{background:linear-gradient(180deg, rgba(6,10,14,.5), rgba(6,10,14,.34));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03), inset 0 8px 18px -12px rgba(0,0,0,.9);}
+.step.blocked .s1{color:var(--muted);}
+.step.blocked .s2{color:#6E7A87;}
+.step.chained{padding-left:40px;}
+.step.chained:before{content:"";position:absolute;left:22px;top:0;bottom:0;width:2px;border-radius:2px;
+  background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.05));}
+.step.chained.unlocked:before{background:linear-gradient(180deg, var(--done), rgba(75,200,142,.25));
+  box-shadow:0 0 10px -2px rgba(75,200,142,.7);}
+.step.done{background:linear-gradient(90deg, rgba(75,200,142,.07), transparent 55%);}
+.step.done .s1{text-decoration:line-through;color:var(--muted);}
+.sbody{flex:1;min-width:0;}
+.s1{font-size:13.5px;font-weight:550;letter-spacing:-.005em;}
+.s2{font-size:11.5px;color:var(--ink-2);margin-top:4px;white-space:pre-wrap;line-height:1.5;}
+.smeta{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:9px;}
+.due{font-size:10.5px;font-weight:600;color:var(--muted);}
+.due.od{color:var(--carried);}
+.blockmsg{font-size:10.5px;color:var(--soon);font-weight:600;}
+.tsl{margin:8px 0 0 2px;padding-left:11px;border-left:1px solid var(--rule);
+  display:flex;flex-direction:column;gap:5px;}
+.tsi{display:flex;align-items:flex-start;gap:8px;}
+.tick.xs{width:15px;height:15px;margin-top:1px;border-width:1.5px;border-radius:5px;}
+.tick.xs.on:after{left:4px;top:1px;width:4px;height:7px;border-width:0 2px 2px 0;}
+.tsi .lbl{font-size:11.5px;line-height:1.4;color:var(--ink-2);}
+.tsi.on .lbl{text-decoration:line-through;color:var(--muted);}
+.tsn{font-family:"Cascadia Mono",Consolas,ui-monospace,monospace;font-variant-numeric:tabular-nums;font-size:10px;font-weight:700;letter-spacing:.04em;
+  padding:1px 6px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--muted);}
+.tsn.all{background:rgba(75,200,142,.16);color:#8FE3BC;}
+.tsed{display:flex;flex-direction:column;gap:7px;}
+.tsrow{display:flex;align-items:center;gap:8px;}
+.tsrow input{flex:1;}
+.tsord{display:flex;flex-direction:column;gap:3px;flex:0 0 auto;}
+.tsord button{background:rgba(255,255,255,.04);border:1px solid var(--rule);border-radius:6px;
+  width:21px;height:17px;padding:0;line-height:1;font-size:9px;color:var(--muted);box-shadow:var(--spec);}
+.tsord button:hover:not([disabled]){border-color:var(--accent);color:var(--ink);}
+.tsord button[disabled]{opacity:.28;cursor:default;}
+.tsx{flex:0 0 auto;width:26px;height:26px;padding:0;font-size:15px;line-height:1;
+  border-radius:var(--r-xs);border:1px solid var(--rule);background:rgba(255,255,255,.04);
+  color:var(--muted);}
+.tsx:hover{color:var(--overdue);border-color:rgba(255,124,92,.4);}
+.linkbtn{background:none;border:0;color:var(--muted);font-size:10.5px;padding:0;
+  text-decoration:underline;text-underline-offset:2px;}
+.linkbtn:hover{color:var(--ink);}
+.linkbtn.warn:hover{color:var(--overdue);}
+.linkbtn.go{color:var(--accent);text-decoration-color:rgba(143,214,255,.45);}
+.linkbtn.go:hover{color:#C9EBFF;}
+.emprev{max-height:340px;overflow:auto;white-space:pre-wrap;font-size:12px;line-height:1.6;
+  color:var(--ink-2);padding:14px 16px;border-radius:var(--r-sm);border:1px solid var(--rule);
+  background:rgba(0,0,0,.22);box-shadow:var(--spec);}
+.emprev.rich{white-space:normal;color:var(--ink-2);}
+.emprev.rich ul{list-style:disc;}
+.emprev.rich b{color:var(--ink);}
+.attlist{display:flex;flex-direction:column;gap:6px;}
+.attrow{font-size:12px;color:var(--ink-2);padding:8px 12px;border-radius:var(--r-sm);
+  border:1px solid rgba(224,169,61,.28);background:rgba(224,169,61,.09);}
+.attrow:before{content:"\1F4CE  ";opacity:.8;}
+.secthead{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;padding:13px 16px 11px;border-bottom:1px solid var(--rule);
+  background:rgba(255,255,255,.035);display:flex;align-items:center;gap:10px;}
+.secthead .sp{flex:1;}
+.dateinline{width:auto;padding:4px 10px;font-size:11px;border:1px solid var(--rule);
+  border-radius:var(--r-pill);background:rgba(255,255,255,.05);
+  font-family:"Cascadia Mono",Consolas,monospace;box-shadow:var(--spec);}
+
+.wiz{max-width:820px;}
+.qs{padding:24px 26px 6px;}
+.q{margin-bottom:20px;}
+.q:last-child{margin-bottom:0;}
+.opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px;}
+.opt{background:rgba(255,255,255,.042);border:1px solid var(--rule);border-radius:var(--r-pill);
+  padding:8px 15px;font-size:12.5px;color:var(--ink-2);
+  backdrop-filter:blur(12px);box-shadow:var(--spec);transition:all .18s;}
+.opt:hover{background:rgba(255,255,255,.08);color:var(--ink);}
+.opt.on{background:linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.075));
+  color:#FFF;border-color:rgba(255,255,255,.26);
+  box-shadow:var(--spec), 0 0 20px -6px rgba(255,255,255,.4);}
+.opt.g0.on{background:linear-gradient(180deg, rgba(143,179,245,.32), rgba(143,179,245,.16));
+  border-color:rgba(143,179,245,.5);color:#EAF1FF;
+  box-shadow:var(--spec), 0 0 22px -6px rgba(143,179,245,.65);}
+.opt.g1.on{background:linear-gradient(180deg, rgba(59,196,176,.32), rgba(59,196,176,.16));
+  border-color:rgba(59,196,176,.5);color:#DFFAF4;
+  box-shadow:var(--spec), 0 0 22px -6px rgba(59,196,176,.65);}
+.opt.sm{padding:6px 12px;font-size:11.5px;}
+.opt.p-high.on{background:linear-gradient(180deg, rgba(224,169,61,.34), rgba(224,169,61,.16));
+  border-color:rgba(224,169,61,.6);color:#FFE3B0;
+  box-shadow:var(--spec), 0 0 20px -6px rgba(224,169,61,.7);}
+.opt.p-normal.on{background:linear-gradient(180deg, rgba(255,255,255,.17), rgba(255,255,255,.08));
+  border-color:rgba(255,255,255,.30);color:#FFF;
+  box-shadow:var(--spec), 0 0 18px -7px rgba(255,255,255,.35);}
+.opt.p-low.on{background:linear-gradient(180deg, rgba(255,255,255,.085), rgba(255,255,255,.035));
+  border-color:rgba(255,255,255,.17);color:var(--ink-2);
+  box-shadow:var(--spec);}
+.preview{border-top:1px solid var(--rule);padding:15px 26px;font-size:12.5px;color:var(--ink-2);
+  background:linear-gradient(180deg, rgba(143,214,255,.12), rgba(255,255,255,.02));}
+.wizfoot{padding:16px 26px 20px;border-top:1px solid var(--rule);display:flex;gap:10px;
+  align-items:center;flex-wrap:wrap;background:rgba(0,0,0,.16);}
+.grid2{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:16px;}
+.grid3{display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:16px;}
+
+.lib{display:flex;gap:12px;padding:13px 16px;border-bottom:1px solid var(--rule-soft);align-items:flex-start;}
+.lib:last-child{border-bottom:0;}
+.lib .ord{display:flex;flex-direction:column;gap:3px;flex:0 0 auto;}
+.lib .ord button{background:rgba(255,255,255,.04);border:1px solid var(--rule);border-radius:6px;
+  width:21px;height:17px;padding:0;line-height:1;font-size:9px;color:var(--muted);box-shadow:var(--spec);}
+.lib .ord button:hover{border-color:var(--accent);color:var(--ink);}
+.lib.off{opacity:.5;}
+
+.rr{display:flex;gap:12px;align-items:flex-start;padding:13px 16px;border-bottom:1px solid var(--rule-soft);}
+.rr:last-child{border-bottom:0;}
+
+@keyframes mshake{10%,90%{transform:translateX(-2px)}30%,70%{transform:translateX(4px)}50%{transform:translateX(-5px)}100%{transform:translateX(0)}}
+.modal.shake{animation:mshake .34s cubic-bezier(.36,.07,.19,.97);}
+#veil{position:fixed;inset:0;background:rgba(6,10,14,.62);display:none;z-index:60;
+  overflow-y:auto;padding:34px 16px;backdrop-filter:blur(6px);}
+#veil.on{display:block;}
+.modal{border-radius:var(--r-lg);max-width:640px;margin:0 auto;overflow:hidden;
+  border:1px solid rgba(255,255,255,.1);
+  background:linear-gradient(180deg, rgba(52,66,85,.8), rgba(30,40,54,.76));
+  backdrop-filter:blur(30px) saturate(1.4);
+  box-shadow:var(--spec), 0 30px 70px -20px rgba(0,0,0,.8);}
+.mhead{padding:20px 24px 14px;border-bottom:1px solid var(--rule);}
+.mhead h3{margin:0;font-family:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  font-size:17px;font-weight:600;letter-spacing:-.015em;}
+.mhead p{margin:4px 0 0;font-size:12px;color:var(--muted);}
+.mbody{padding:20px 24px;}
+.mbody .q{margin-bottom:18px;}
+.mfoot{padding:16px 24px 20px;border-top:1px solid var(--rule);display:flex;gap:10px;
+  align-items:center;background:rgba(0,0,0,.18);}
+.mfoot .sp{flex:1;}
+
+@keyframes alarmin{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+#alarm{position:fixed;right:22px;bottom:22px;z-index:90;width:min(400px,calc(100vw - 32px));
+  display:none;border-radius:var(--r-lg);overflow:hidden;border:1px solid rgba(255,255,255,.12);
+  background:linear-gradient(180deg, rgba(58,72,92,.96), rgba(32,42,56,.95));
+  box-shadow:var(--spec), 0 30px 70px -18px rgba(0,0,0,.85);}
+#alarm.on{display:block;animation:alarmin .26s cubic-bezier(.2,.9,.3,1);}
+.alhd{display:flex;align-items:center;gap:9px;padding:14px 17px 0;}
+.aldot{width:8px;height:8px;border-radius:50%;background:var(--soon);
+  box-shadow:0 0 12px 2px rgba(224,169,61,.7);}
+.alk{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--soon);font-weight:700;}
+.alwhen{margin-left:auto;font-size:10.5px;color:var(--muted);}
+.albd{padding:9px 17px 4px;}
+.alt{font-size:15px;font-weight:600;letter-spacing:-.015em;line-height:1.35;}
+.alsub{font-size:11.5px;color:var(--ink-2);margin-top:5px;line-height:1.5;white-space:pre-wrap;}
+.almore{font-size:10.5px;color:var(--muted);margin-top:8px;}
+.alft{padding:13px 17px 15px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.alsz{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;width:100%;margin-bottom:1px;}
+.alb{font:inherit;font-size:11.5px;padding:6px 11px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--rule);background:rgba(255,255,255,.06);color:var(--ink-2);box-shadow:var(--spec);}
+.alb:hover{background:rgba(255,255,255,.12);color:var(--ink);}
+.alb.go{border:0;color:#08222E;font-weight:600;padding:7px 15px;
+  background:linear-gradient(180deg,#B6E4FF,var(--accent));}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(180deg, rgba(58,73,94,.92), rgba(38,50,66,.9));
+  color:var(--ink);padding:11px 20px;border-radius:var(--r-pill);font-size:12.5px;
+  border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(24px);
+  box-shadow:var(--spec), 0 16px 40px -12px rgba(0,0,0,.75);
+  opacity:0;pointer-events:none;transition:opacity .18s;z-index:99;}
+.toast.on{opacity:1;}
+.nag{border-radius:var(--r-md);padding:11px 15px;font-size:12.5px;margin-bottom:20px;
+  display:flex;gap:11px;align-items:center;flex-wrap:wrap;color:var(--ink-2);
+  border:1px solid rgba(224,169,61,.28);
+  background:linear-gradient(180deg, rgba(224,169,61,.13), rgba(224,169,61,.05));
+  backdrop-filter:blur(16px);box-shadow:var(--spec), var(--lift);}
+.nag b{color:var(--soon);font-weight:600;}
+.nag.calm{border-color:rgba(143,214,255,.22);background:linear-gradient(180deg, rgba(143,214,255,.10), rgba(143,214,255,.03));}
+.nag.calm b{color:var(--accent);}
+.diskcard .dk{letter-spacing:-.01em;}
+
+.prio{font-family:"Cascadia Mono",Consolas,monospace;font-size:8.5px;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:var(--r-pill);}
+.prio.high{color:#FFD9A8;background:rgba(224,169,61,.22);}
+.prio.low{color:var(--muted);background:rgba(255,255,255,.05);}
+.row.pri-high{border-left:3px solid var(--soon);}
+.row.pri-low .t1{color:var(--ink-2);}
+.row .free,.smeta .free{font-style:italic;opacity:.75;color:var(--muted);}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}
+@media (max-width:820px){
+  #shell{flex-direction:column;}
+  #rail{width:100%;flex:none;height:auto;position:static;flex-direction:row;flex-wrap:wrap;padding:10px;
+    border-right:0;border-bottom:1px solid var(--rule);}
+  #rail .brand{border:0;padding:0 12px 0 6px;margin:0;}
+  #rail .spacer,.navsep{display:none;}
+  #rail .foot{border:0;padding:0;display:flex;gap:6px;}
+  #rail .foot button{width:auto;margin:0;}
+  .navbtn{width:auto;padding:7px 12px;margin:0;}
+  #main{padding:18px 14px 50px;}
+  .spine{margin-left:8px;}
+  .later{margin-left:28px;}
+  .cday{min-height:58px;padding:5px;}
+  .cchip{font-size:9px;padding:1px 4px;}
+  .grid2,.grid3{grid-template-columns:1fr;}
+  .facts{flex-direction:column;}
+}
+
+/* ---- Starter templates ---- */
+.starters{display:flex;flex-direction:column;gap:10px;}
+.starter{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:12px 14px;
+  border-radius:var(--r-sm);border:1px solid var(--rule);background:rgba(255,255,255,.03);}
+.starter b{font-size:13.5px;color:var(--ink);}
+.starter .hint{margin:3px 0 0;}
+.starter .btn{flex:0 0 auto;}
+/* ---- PWA additions ---- */
+html{-webkit-text-size-adjust:100%;}
+body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;}
+#pwaBar{display:none;position:fixed;left:12px;right:12px;z-index:70;
+  top:calc(env(safe-area-inset-top) + 10px);max-width:560px;margin:0 auto;
+  padding:12px 14px;border-radius:var(--r-md);font-size:13px;line-height:1.4;
+  background:linear-gradient(180deg, rgba(58,73,94,.96), rgba(38,50,66,.96));
+  border:1px solid rgba(255,255,255,.14);box-shadow:var(--spec), var(--lift);}
+#pwaBar.on{display:flex;gap:12px;align-items:center;}
+#pwaBar .msg{flex:1;}
+#pwaBar button{flex:0 0 auto;border-radius:var(--r-pill);padding:8px 14px;border:1px solid var(--rule);
+  background:rgba(255,255,255,.07);color:var(--ink);}
+#pwaBar button.go{border:0;color:#08222E;font-weight:600;background:linear-gradient(180deg,#B6E4FF,var(--accent));}
+@media (display-mode:standalone){ #shell{min-height:100dvh;} }
+@media (max-width:820px){
+  /* bottom tab bar instead of the side rail */
+  body{padding-bottom:calc(64px + env(safe-area-inset-bottom));}
+  #rail{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:50;width:100%;height:auto;
+    flex-direction:row;flex-wrap:nowrap;align-items:stretch;gap:2px;
+    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+    border-right:0;border-bottom:0;border-top:1px solid var(--rule);
+    background:linear-gradient(180deg, rgba(14,21,29,.92), rgba(8,12,17,.98));}
+  #rail::-webkit-scrollbar{display:none;}
+  #rail .brand,#rail .foot,#rail .spacer,#tabWarn,.navsep{display:none!important;}
+  #storeWarn{display:none!important;}
+  .navbtn{flex:0 0 auto;min-width:76px;min-height:48px;padding:6px 10px;margin:0;
+    flex-direction:column;justify-content:center;gap:2px;text-align:center;font-size:11.5px;white-space:nowrap;}
+  .navbtn .pill{position:absolute;top:2px;right:6px;}
+  .navbtn{position:relative;}
+  #main{padding:calc(env(safe-area-inset-top) + 16px) calc(14px + env(safe-area-inset-left)) 36px calc(14px + env(safe-area-inset-right));}
+  /* iOS zooms the page when a field under 16px gets focus */
+  input,select,textarea{font-size:16px!important;}
+  button,.btn,.alb,select{min-height:40px;}
+  /* modals become a near-full-height sheet */
+  #veil{padding:calc(env(safe-area-inset-top) + 10px) 8px calc(10px + env(safe-area-inset-bottom));}
+  .mhead{padding:16px 16px 12px;}
+  .toast{bottom:calc(76px + env(safe-area-inset-bottom));max-width:90vw;text-align:center;}
+  .col{flex:1 1 100%;max-width:none;}
+  .closedhead,.verline,.card{max-width:none;}
+  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+}
+@media (max-width:820px) and (display-mode:standalone){
+  #pwaBar{top:calc(env(safe-area-inset-top) + 8px);}
+}
+</style>
+</head>
+<body>
+<div id="shell">
+  <nav id="rail">
+    <div class="brand"><b>Tracker</b><span id="brandVer"></span></div>
+    <button class="navbtn" data-v="week">This week <span class="pill zero" id="pillWeek">0</span></button>
+    <button class="navbtn" data-v="cal">Calendar</button>
+    <button class="navbtn" data-v="board">Board <span class="pill zero" id="pillBoard" style="background:#3D454E">0</span></button>
+    <button class="navbtn" data-v="new">New checklist</button>
+    <div class="navsep"></div>
+    <button class="navbtn" data-v="recur">Repeating</button>
+    <button class="navbtn" data-v="lib">Step library</button>
+    <button class="navbtn" data-v="settings">Settings</button>
+    <button class="navbtn" data-v="data">Backup</button>
+    <div id="storeWarn"></div>
+    <div id="tabWarn"></div>
+    <div class="spacer"></div>
+    <div class="foot">
+      <button id="qExport">Export backup</button>
+      <span style="font-size:10px;color:#6E767E" id="lastSaved"></span>
+    </div>
+  </nav>
+  <main id="main"></main>
+</div>
+<div id="veil"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+<div id="alarm"></div>
+<input type="file" id="fileMerge" accept="application/json,.json" style="display:none" aria-hidden="true" tabindex="-1">
+<div id="pwaBar" role="status"><span class="msg" id="pwaMsg"></span><button id="pwaNo">Not now</button><button class="go" id="pwaGo"></button></div>
+
+<script>
+"use strict";
+
+var DEFAULT_UNITS = [];
+var DEFAULT_STEPS = [];
+var DEFAULT_RECURRING = [];
+var BUILTIN_PROCESSES = [];
+
+var PROCESSES = BUILTIN_PROCESSES.slice();
+function rebuildProcesses(){
+  PROCESSES = BUILTIN_PROCESSES.concat((S && S.processes) ? S.processes : []);
+}
+function isBuiltin(id){ return BUILTIN_PROCESSES.some(function(p){return p.id===id;}); }
+
+function makeProcess(f){
+  var label=(f.label||"Goal").trim();
+  var anchor=(f.anchorLabel||"Date").trim();
+  return {
+    id: f.id || ("u"+uid()),
+    label: label,
+    navLabel: label,
+    eyebrow: "New checklist",
+    title: label,
+    lede: f.lede || "Answer these and the checklist builds itself, with the dates worked out. You can edit anything afterwards.",
+    subjectLabel: (f.subjectLabel||"Name").trim(),
+    subjectHint: f.subjectHint || "",
+    anchorLabel: anchor,
+    anchorPhrase: anchor.toLowerCase(),
+    cardDate: anchor.toLowerCase(),
+    anchorAhead: (f.anchorAhead===undefined?14:f.anchorAhead),
+    instLabel: "Category",
+    asksInst: !!f.asksInst,
+    asksUnit: f.asksUnit!==false,
+    cancelReasons: DEFAULT_CANCEL_REASONS,
+    custom: true,
+    flags: f.flags || []
+  };
+}
+
+function proc(id){
+  var p=PROCESSES.filter(function(x){return x.id===id;})[0];
+  return p || PROCESSES[0] || NO_PROCESS;
+}
+var NO_PROCESS={id:"", label:"Goal", navLabel:"New checklist", eyebrow:"New checklist", title:"New checklist", lede:"",
+  subjectLabel:"Name", subjectHint:"", anchorLabel:"Date", anchorPhrase:"date", cardDate:"date", anchorAhead:14,
+  instLabel:"Category", asksInst:false, asksUnit:false, cancelReasons:[], custom:true, flags:[]};
+function asksGroup(P){ return !!(P && P.asksInst && S && S.groups && S.groups.length); }
+function asksUnit(P){ return !!(P && P.asksUnit && S && S.units && S.units.length); }
+function flagsFor(id){ return proc(id).flags || []; }
+function multiProcess(){ return PROCESSES.length>1; }
+
+var APP_VERSION="1.6.1", APP_VERSION_DATE="2026-10-13";
+
+var KEY="tracker_v1", OLDKEY="tracker_v0";
+var storeOK=true, S=null;
+
+function blankState(){
+  return {
+    v:2,
+    units: DEFAULT_UNITS.slice(),
+    template: JSON.parse(JSON.stringify(DEFAULT_STEPS)),
+    cases:[],
+    columns:[{id:"todo",name:"To do"},{id:"prog",name:"In progress"},
+             {id:"wait",name:"Waiting on"},{id:"done",name:"Completed"}],
+    recurring: DEFAULT_RECURRING.map(function(r){ var c=Object.assign({},r); c.next=firstOccurrence(c); c.anchor=firstIntended(c); return c; }),
+    tasks:[],
+    processes:[],
+    workDays:[0,1,2,3,4,5,6],
+    groups:[],
+    lastExport:null
+  };
+}
+function load(){
+  try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); }
+  catch(e){
+    storeOK=false;
+    var w=document.getElementById("storeWarn");
+    w.style.display="block";
+    w.textContent="Autosave is blocked here. Export a backup before closing the tab.";
+  }
+  if(storeOK){
+    try{
+      var raw=localStorage.getItem(KEY) || localStorage.getItem(OLDKEY);
+      if(raw) S=JSON.parse(raw);
+    }catch(e){ S=null; }
+  }
+  if(!S) S=blankState();
+  normaliseLoaded();
+}
+function normaliseLoaded(){
+  var b=blankState();
+  if(!S.units) S.units=b.units;
+  if(!S.columns) S.columns=b.columns;
+  if(!S.recurring) S.recurring=b.recurring;
+  if(!S.template) S.template=b.template;
+  if(!S.cases) S.cases=[];
+  migrate();
+  pruneDone();
+  S.v=2;
+  syncReset();
+}
+
+function migrate(){
+  if(!S.processes) S.processes=[];
+  if(!S.groups) S.groups=[];
+  if(!S.units) S.units=[];
+  if(!S.workDays) S.workDays=[0,1,2,3,4,5,6];
+  if(!S.tasks) S.tasks=[];
+  S.remindMigrated=true;
+  S.processes.forEach(function(p){ if(!p.flags) p.flags=[]; });
+  rebuildProcesses();
+  seedNewProcesses();
+  seedNewRecurring();
+}
+
+var PRE_SEED_RECURRING = [];
+
+function seedNewRecurring(){
+  if(!S.recurring) S.recurring=[];
+  if(!S.seededRecurring){
+    var seen={};
+    S.recurring.forEach(function(r){ seen[r.id]=1; });
+    PRE_SEED_RECURRING.forEach(function(id){ seen[id]=1; });
+    S.seededRecurring = Object.keys(seen);
+  }
+  DEFAULT_RECURRING.forEach(function(d){
+    if(S.seededRecurring.indexOf(d.id)!==-1) return;
+    var c=Object.assign({},d); c.next=firstOccurrence(c); c.anchor=firstIntended(c);
+    S.recurring.push(c);
+    S.seededRecurring.push(d.id);
+  });
+}
+
+function seedNewProcesses(){
+  if(!S.seededProcesses){
+    var seen={};
+    S.template.forEach(function(s){ seen[stepProcess(s)]=1; });
+    S.seededProcesses=Object.keys(seen);
+  }
+  PROCESSES.forEach(function(P){
+    if(S.seededProcesses.indexOf(P.id)!==-1) return;
+    var add=DEFAULT_STEPS.filter(function(s){ return stepProcess(s)===P.id; });
+    S.template=S.template.concat(JSON.parse(JSON.stringify(add)));
+    S.seededProcesses.push(P.id);
+  });
+}
+
+/* ---- Starter templates: opt-in, added to the user's own processes and steps ---- */
+function stp(phase,t,d,off,extra){
+  var o={t:t,d:d,phase:phase,off:off,owner:"HRA",units:"*",inst:"*",needs:[],when:[],asap:false};
+  if(extra) for(var k in extra) o[k]=extra[k];
+  return o;
+}
+var STARTERS = [
+  { id:"st_morning", label:"Morning routine",
+    blurb:"A short run from waking up to out the door. Each step is small on purpose.",
+    process:{ label:"Morning routine", anchorLabel:"Day", subjectLabel:"Name this one", subjectHint:"Tuesday",
+      anchorAhead:1, asksUnit:false,
+      lede:"Pick the morning and it lays out the steps. You can tick them off in any order." },
+    steps:[
+      stp("Get going","Drink some water","A glass by the bed or at the sink. An easy first win.",0),
+      stp("Get going","Take anything you take in the morning","Vitamins, pills, whatever your morning thing is. Skip it if there is nothing.",0),
+      stp("Get going","Open the curtains or step outside for a minute","Daylight helps you wake up.",0),
+      stp("Get ready","Wash up and brush your teeth","",0),
+      stp("Get ready","Get dressed","Use what you laid out last night, or the first thing that works.",0),
+      stp("Get ready","Eat something","Anything counts: toast, yoghurt, a banana.",0),
+      stp("Out the door","Look at today","Open This week. Pick the one thing that matters most.",0),
+      stp("Out the door","Pack your bag","Whatever you need today: charger, lunch, water bottle, paperwork.",0),
+      stp("Out the door","Last check at the door: phone, wallet, keys","Pat your pockets before you leave.",0)
+    ] },
+  { id:"st_bills", label:"Pay a bill",
+    blurb:"From finding the bill to checking it went through, with room before the due date.",
+    process:{ label:"Pay a bill", anchorLabel:"Due date", subjectLabel:"Which bill", subjectHint:"Electricity",
+      anchorAhead:10, asksUnit:false,
+      lede:"Enter the bill and its due date. The steps are spread out so nothing lands on the last day." },
+    steps:[
+      stp("Before it is due","Find the bill and check the amount","Open the email or letter. Does the amount look right? Write it down.",-7),
+      stp("Before it is due","Make sure the money is there","Check your balance. If it is short, move money now, not on the due date.",-4),
+      stp("Before it is due","Pay it","Pay online or in your banking app. Two days early leaves room if something goes wrong.",-2,{id:"st_bills_3"}),
+      stp("Before it is due","Save the confirmation","Screenshot it or save the confirmation number.",-2,{needs:["st_bills_3"]}),
+      stp("After","Check it left your account","A quick look at your account. If it has not gone, contact them now.",2),
+      stp("After","Set up auto-pay or a reminder for next time?","Only if it is the same bill each month. Auto-pay means one less thing to remember.",2)
+    ] },
+  { id:"st_appt", label:"Appointment prep",
+    blurb:"Get ready for an appointment: confirm, prepare what to say, pack, travel, then write down what happened.",
+    process:{ label:"Appointment prep", anchorLabel:"Appointment date", subjectLabel:"Appointment", subjectHint:"Dentist",
+      anchorAhead:7, asksUnit:false,
+      lede:"Enter the appointment and its date. The steps build backwards from it, and forward for afterwards.",
+      flags:[{k:"q_forms",label:"There are forms to fill in"},{k:"q_travel",label:"I need to travel there"}] },
+    steps:[
+      stp("Before","Confirm the date, time and place","Check the confirmation, or call or message if you cannot find it. Put it in your calendar with an alarm.",-7),
+      stp("Before","Fill in any forms","Do these early. They always take longer than you think.",-5,{when:["q_forms"]}),
+      stp("Before","Write down what you want to say or ask","Even three bullet points. It is easy to blank in the room.",-3),
+      stp("Before","Gather what to bring","ID, cards, paperwork, your questions, payment. Put it all by the door.",-1),
+      stp("Before","Plan the trip","Route, parking or transit times, and when you need to leave. Add 15 minutes.",-1,{when:["q_travel"]}),
+      stp("The day","Leave on time","Set an alarm for your leave-by time.",0,{when:["q_travel"]}),
+      stp("The day","Go to the appointment","Phone on silent, questions in hand.",0),
+      stp("After","Write down what was said","Do it today while it is fresh: what they told you and what happens next.",0),
+      stp("After","Book any follow-up or do the next step","",1)
+    ] }
+];
+
+function starterAdded(id){ return (S.processes||[]).some(function(p){ return p.id===id; }); }
+
+function starterPickerHTML(){
+  var h='<div class="starters">';
+  STARTERS.forEach(function(st){
+    var added=starterAdded(st.id);
+    h+='<div class="starter"><div><b>'+esc(st.label)+'</b><div class="hint">'+esc(st.blurb)+'</div></div>'+
+       '<button class="btn sm'+(added?' ghost':'')+'" data-act="starter" data-id="'+esc(st.id)+'"'+(added?' disabled':'')+'>'+(added?'Added':'Add')+'</button></div>';
+  });
+  return h+'</div>';
+}
+
+function addStarter(id){
+  var st=STARTERS.filter(function(x){ return x.id===id; })[0];
+  if(!st || starterAdded(id)) return;
+  var f=Object.assign({id:st.id}, st.process);
+  S.processes.push(makeProcess(f));
+  if(S.seededProcesses.indexOf(st.id)===-1) S.seededProcesses.push(st.id);
+  st.steps.forEach(function(x,i){
+    var step=JSON.parse(JSON.stringify(x));
+    step.id=step.id||(st.id+"_"+(i+1));
+    step.process=st.id;
+    S.template.push(step);
+  });
+  rebuildProcesses(); save();
+  draft=newDraft(st.id); view="new"; render();
+  toast("Added “"+st.label+"” — start your first one below");
+}
+/* SYNC-BEGIN */
+/* ---- Sync: per-record stamps, deletion markers and merge ----
+   Every record gets updatedAt when it changes (stamped inside save()). Removing a
+   record leaves a marker with the time, so another device can tell "deleted" from
+   "never had it". Merging two copies is then record by record: the newer change
+   wins, deletions carry over, and nothing is lost just because both devices were
+   edited. Steps inside a checklist or task are merged individually. */
+var SYNC_TOMB_MS=180*864e5;
+var SYNC_COLLS=[
+  {k:"cases",     nested:"steps"},
+  {k:"template"},
+  {k:"recurring"},
+  {k:"tasks",     nested:"steps"},
+  {k:"processes"},
+  {k:"doneLog"},
+  {k:"columns"}
+];
+var SYNC_SETS=["units","groups"];
+var SYNC_CFG=["workDays","eodTime"];
+var syncSnap=null;
+
+function syncClone(o){ return JSON.parse(JSON.stringify(o)); }
+function syncCanon(v){
+  if(v===null||typeof v!=="object") return JSON.stringify(v)||"null";
+  if(Array.isArray(v)) return "["+v.map(syncCanon).join(",")+"]";
+  return "{"+Object.keys(v).sort().filter(function(k){ return v[k]!==undefined; })
+    .map(function(k){ return JSON.stringify(k)+":"+syncCanon(v[k]); }).join(",")+"}";
+}
+function syncHash(r,nested){
+  var o={};
+  Object.keys(r).forEach(function(k){ if(k==="updatedAt"||k==="stomb"||k===nested) return; o[k]=r[k]; });
+  return syncCanon(o);
+}
+function syncCfg(st){
+  var o={}; SYNC_CFG.forEach(function(k){ if(st[k]!==undefined) o[k]=st[k]; });
+  return syncCanon(o);
+}
+function syncFind(list,id){
+  for(var i=0;i<(list||[]).length;i++){ if(list[i] && list[i].id===id) return list[i]; }
+  return null;
+}
+
+/* Remember what every record looked like at the last save/load, so the next
+   save can tell which ones changed. Call whenever S is replaced wholesale. */
+function syncReset(){
+  var snap={rec:{},set:{},cfg:syncCfg(S)};
+  SYNC_COLLS.forEach(function(C){
+    (S[C.k]||[]).forEach(function(r){
+      if(!r||!r.id) return;
+      snap.rec[C.k+"|"+r.id]={h:syncHash(r,C.nested),u:r.updatedAt||0};
+      if(C.nested) (r[C.nested]||[]).forEach(function(s){
+        if(s&&s.id) snap.rec[C.k+"|"+r.id+"|"+s.id]={h:syncHash(s),u:s.updatedAt||0};
+      });
+    });
+  });
+  SYNC_SETS.forEach(function(k){ var m={}; (S[k]||[]).forEach(function(n){ m[n]=1; }); snap.set[k]=m; });
+  syncSnap=snap;
+}
+
+/* Called from save(): stamp what changed, leave a marker for what disappeared. */
+function syncStamp(now){
+  if(!S) return;
+  if(!syncSnap) syncReset();
+  now=now||Date.now();
+  var seen={}, snap=syncSnap.rec;
+  if(!S.tomb) S.tomb={};
+  function touch(key,r,nested,parent){
+    var h=syncHash(r,nested), prev=snap[key];
+    seen[key]=1;
+    if(!prev || prev.h!==h) r.updatedAt=now;
+    else if(!r.updatedAt && prev.u) r.updatedAt=prev.u;
+    snap[key]={h:h,u:r.updatedAt||0};
+  }
+  SYNC_COLLS.forEach(function(C){
+    if(!S.tomb[C.k]) S.tomb[C.k]={};
+    (S[C.k]||[]).forEach(function(r){
+      if(!r||!r.id) return;
+      touch(C.k+"|"+r.id,r,C.nested);
+      delete S.tomb[C.k][r.id];
+      if(C.nested) (r[C.nested]||[]).forEach(function(s){
+        if(!s||!s.id) return;
+        touch(C.k+"|"+r.id+"|"+s.id,s,null);
+        if(r.stomb) delete r.stomb[s.id];
+      });
+    });
+  });
+  Object.keys(snap).forEach(function(key){
+    if(seen[key]) return;
+    var p=key.split("|");
+    delete snap[key];
+    if(p.length===2){ S.tomb[p[0]][p[1]]=now; }
+    else {
+      var parent=syncFind(S[p[0]],p[1]);
+      if(parent){ if(!parent.stomb) parent.stomb={}; parent.stomb[p[2]]=now; }
+    }
+  });
+  SYNC_SETS.forEach(function(k){
+    if(!S.setMeta) S.setMeta={};
+    var m=S.setMeta[k]||(S.setMeta[k]={at:{},del:{}}), cur={};
+    (S[k]||[]).forEach(function(n){ cur[n]=1; if(!syncSnap.set[k][n]) m.at[n]=now; });
+    Object.keys(syncSnap.set[k]).forEach(function(n){ if(!cur[n]) m.del[n]=now; });
+    syncSnap.set[k]=cur;
+  });
+  var cfg=syncCfg(S);
+  if(cfg!==syncSnap.cfg){ S.settingsAt=now; syncSnap.cfg=cfg; }
+  syncPrune(S,now);
+}
+
+/* Markers older than this are dropped; a device offline longer than that should
+   be restored rather than merged. */
+function syncPrune(st,now){
+  var cut=now-SYNC_TOMB_MS;
+  function clean(m){ if(!m) return; Object.keys(m).forEach(function(k){ if(m[k]<cut) delete m[k]; }); }
+  Object.keys(st.tomb||{}).forEach(function(k){ clean(st.tomb[k]); });
+  Object.keys(st.setMeta||{}).forEach(function(k){ clean(st.setMeta[k].del); });
+  SYNC_COLLS.forEach(function(C){
+    if(C.nested) (st[C.k]||[]).forEach(function(r){
+      clean(r.stomb); if(r.stomb && !Object.keys(r.stomb).length) delete r.stomb;
+    });
+  });
+}
+
+function syncOrder(lids,rids,have){
+  var out=lids.filter(function(id,i){ return have[id] && lids.indexOf(id)===i; });
+  rids.forEach(function(id,i){
+    if(!have[id] || out.indexOf(id)!==-1) return;
+    var j=i-1; while(j>=0 && out.indexOf(rids[j])===-1) j--;
+    if(j<0) out.push(id); else out.splice(out.indexOf(rids[j])+1,0,id);
+  });
+  return out;
+}
+
+/* Merge two lists of records that carry an id and updatedAt. */
+function syncMergeList(Ll,Rl,TL,TR,nested,cnt){
+  Ll=Ll||[]; Rl=Rl||[]; TL=TL||{}; TR=TR||{};
+  var Lm={},Rm={},seen={},res={};
+  Ll.forEach(function(r){ if(r&&r.id) Lm[r.id]=r; });
+  Rl.forEach(function(r){ if(r&&r.id) Rm[r.id]=r; });
+  Ll.concat(Rl).forEach(function(x){
+    if(!x||!x.id||seen[x.id]) return;
+    seen[x.id]=1;
+    var id=x.id, l=Lm[id], r=Rm[id], tl=TL[id]||0, tr=TR[id]||0, pick=null;
+    if(l && !r){
+      if(tr && tr>=(l.updatedAt||0)) cnt.removed++; else pick=syncClone(l);
+    } else if(r && !l){
+      if(tl && tl>=(r.updatedAt||0)){ /* stays deleted here */ }
+      else { pick=syncClone(r); cnt.added++; }
+    } else {
+      var lu=l.updatedAt||0, ru=r.updatedAt||0, win=l;
+      var same=syncHash(l,nested)===syncHash(r,nested);
+      if(!same){
+        if(ru>lu || (ru===lu && cnt.remoteNewer)){ win=r; cnt.updated++; } else cnt.kept++;
+      }
+      pick=syncClone(win);
+      pick.updatedAt=same ? Math.max(lu,ru) : (win.updatedAt||0);
+      if(!pick.updatedAt) delete pick.updatedAt;
+      if(nested){
+        var sub=syncMergeList(l[nested],r[nested],l.stomb,r.stomb,null,cnt);
+        pick[nested]=sub.list;
+        if(Object.keys(sub.tomb).length) pick.stomb=sub.tomb; else delete pick.stomb;
+      }
+    }
+    if(pick) res[id]=pick;
+  });
+  var tomb={};
+  [TL,TR].forEach(function(t){
+    Object.keys(t).forEach(function(id){
+      if(res[id]) return;
+      if(t[id]>=cnt.now-SYNC_TOMB_MS && (!tomb[id]||t[id]>tomb[id])) tomb[id]=t[id];
+    });
+  });
+  var order=syncOrder(Ll.map(function(r){return r&&r.id;}), Rl.map(function(r){return r&&r.id;}), res);
+  return {list:order.map(function(id){ return res[id]; }), tomb:tomb};
+}
+
+/* Merge `remote` into a copy of `local`. Neither argument is changed.
+   Returns {merged, report:{added,updated,removed,kept}, changed}. */
+function syncMerge(local,remote,now){
+  now=now||Date.now();
+  var L=syncClone(local), R=syncClone(remote), out=syncClone(local);
+  var cnt={added:0,updated:0,removed:0,kept:0,now:now,remoteNewer:(R.rev||0)>(L.rev||0)};
+  var tomb={};
+  SYNC_COLLS.forEach(function(C){
+    var m=syncMergeList(L[C.k],R[C.k],(L.tomb||{})[C.k],(R.tomb||{})[C.k],C.nested,cnt);
+    out[C.k]=m.list; tomb[C.k]=m.tomb;
+  });
+  out.tomb=tomb;
+
+  out.setMeta={};
+  SYNC_SETS.forEach(function(k){
+    var lm=(L.setMeta||{})[k]||{}, rm=(R.setMeta||{})[k]||{};
+    var at={},del={},inL={},inR={},names=[];
+    (L[k]||[]).forEach(function(n){ inL[n]=1; if(names.indexOf(n)===-1) names.push(n); });
+    (R[k]||[]).forEach(function(n){ inR[n]=1; if(names.indexOf(n)===-1) names.push(n); });
+    [[lm.at,at],[rm.at,at],[lm.del,del],[rm.del,del]].forEach(function(p){
+      Object.keys(p[0]||{}).forEach(function(n){ if(!(p[1][n]>=p[0][n])) p[1][n]=p[0][n]; });
+    });
+    var res=[];
+    names.forEach(function(n){
+      if((del[n]||0)>(at[n]||0)){ if(inL[n]) cnt.removed++; }
+      else { res.push(n); if(!inL[n]) cnt.added++; }
+    });
+    out[k]=res;
+    Object.keys(del).forEach(function(n){ if(del[n]<now-SYNC_TOMB_MS) delete del[n]; });
+    out.setMeta[k]={at:at,del:del};
+  });
+
+  var ls=L.settingsAt||0, rs=R.settingsAt||0;
+  if(syncCfg(L)!==syncCfg(R)){
+    if(rs>ls || (rs===ls && cnt.remoteNewer)){
+      SYNC_CFG.forEach(function(k){ if(R[k]!==undefined) out[k]=syncClone(R[k]); });
+      cnt.updated++;
+    } else cnt.kept++;
+  }
+  out.settingsAt=Math.max(ls,rs)||undefined;
+  if(out.settingsAt===undefined) delete out.settingsAt;
+
+  ["lastExport","eodDone"].forEach(function(k){
+    if(R[k] && (!out[k] || R[k]>out[k])) out[k]=R[k];
+  });
+  ["seededProcesses","seededRecurring"].forEach(function(k){
+    var u=(L[k]||[]).slice();
+    (R[k]||[]).forEach(function(x){ if(u.indexOf(x)===-1) u.push(x); });
+    if(u.length || L[k] || R[k]) out[k]=u;
+  });
+
+  /* Keep things that others still depend on. */
+  var haveP={}; out.processes.forEach(function(p){ haveP[p.id]=1; });
+  out.cases.forEach(function(c){
+    if(!c.process || haveP[c.process]) return;
+    var src=syncFind(local.processes,c.process)||syncFind(remote.processes,c.process);
+    if(!src) return;
+    out.processes.push(syncClone(src)); haveP[c.process]=1;
+    delete out.tomb.processes[c.process];
+    var haveT={}; out.template.forEach(function(s){ haveT[s.id]=1; });
+    (local.template||[]).concat(remote.template||[]).forEach(function(s){
+      if(s.process===c.process && !haveT[s.id]){
+        out.template.push(syncClone(s)); haveT[s.id]=1; delete out.tomb.template[s.id];
+      }
+    });
+    cnt.kept++;
+  });
+  var haveC={}; (out.columns||[]).forEach(function(c){ haveC[c.id]=1; });
+  if(out.columns && out.columns.length){
+    out.cases.forEach(function(c){
+      if(c.col && !haveC[c.col]) c.col=out.columns[0].id;
+      if(c.colWas && !haveC[c.colWas]) delete c.colWas;
+    });
+  }
+
+  var report={added:cnt.added,updated:cnt.updated,removed:cnt.removed,kept:cnt.kept};
+  var changed=syncCanon(out)!==syncCanon(local);
+  return {merged:out, report:report, changed:changed};
+}
+/* SYNC-END */
+
+var fileHandle=null;
+var diskState="off";
+var lastDiskWrite=null, diskTimer=null;
+
+function diskSupported(){ return typeof window.showSaveFilePicker==="function"; }
+
+function idbDo(mode,fn){
+  return new Promise(function(res,rej){
+    var r=indexedDB.open("tracker_file",1);
+    r.onupgradeneeded=function(){ r.result.createObjectStore("h"); };
+    r.onerror=function(){ rej(r.error); };
+    r.onsuccess=function(){
+      var db=r.result, t=db.transaction("h",mode), st=t.objectStore("h");
+      var out=fn(st);
+      t.oncomplete=function(){ db.close(); res(out&&out.result!==undefined?out.result:out); };
+      t.onerror=function(){ db.close(); rej(t.error); };
+    };
+  });
+}
+function rememberHandle(h){ return idbDo("readwrite",function(st){ st.put(h,"data"); }); }
+function recallHandle(){  return idbDo("readonly", function(st){ return st.get("data"); }); }
+function forgetHandle(){  return idbDo("readwrite",function(st){ st.delete("data"); }); }
+
+var DISK_TYPES=[{description:"Tracker data",accept:{"application/json":[".json"]}}];
+
+function chooseDataFile(){
+  if(!diskSupported()) return;
+  window.showSaveFilePicker({suggestedName:"tracker-data.json",types:DISK_TYPES})
+    .then(function(h){
+      fileHandle=h; diskState="connected";
+      return rememberHandle(h).then(function(){ return writeDisk(); });
+    })
+    .then(function(){ render(); toast("Saving to this file from now on"); })
+    .catch(function(e){ if(e && e.name!=="AbortError") toast("That file could not be used"); });
+}
+
+function openDataFile(){
+  if(!diskSupported()) return;
+  window.showOpenFilePicker({types:DISK_TYPES,multiple:false})
+    .then(function(a){
+      var h=a[0];
+      return h.getFile().then(function(f){ return f.text(); }).then(function(txt){
+        var d=JSON.parse(txt);
+        if(!d || !d.cases) throw new Error("bad");
+        if(!confirm("Replace everything currently in the app with the contents of this file?")) return;
+        S=d; load2(); fileHandle=h; diskState="connected";
+        return rememberHandle(h).then(function(){ save(); render(); toast("Loaded from your data file"); });
+      });
+    })
+    .catch(function(e){
+      if(e && e.name==="AbortError") return;
+      alert("That file could not be read as Tracker data. Pick a file this app saved.");
+    });
+}
+
+function writeDisk(){
+  if(diskState!=="connected" || !fileHandle) return Promise.resolve();
+  return fileHandle.createWritable()
+    .then(function(w){ return w.write(JSON.stringify(S,null,2)).then(function(){ return w.close(); }); })
+    .then(function(){ lastDiskWrite=new Date(); stamp(); })
+    .catch(function(){ diskState="needsPermission"; stamp(); render(); });
+}
+
+function restoreDisk(){
+  if(!diskSupported()){ diskState="unsupported"; stamp(); return; }
+  recallHandle().then(function(h){
+    if(!h){ diskState="off"; stamp(); return; }
+    fileHandle=h;
+    return h.queryPermission({mode:"readwrite"}).then(function(perm){
+      diskState = (perm==="granted") ? "connected" : "needsPermission";
+      stamp(); render();
+    });
+  }).catch(function(){ diskState="off"; stamp(); });
+}
+
+function reconnectDisk(){
+  if(!fileHandle) return;
+  fileHandle.requestPermission({mode:"readwrite"}).then(function(perm){
+    if(perm==="granted"){ diskState="connected"; writeDisk().then(function(){ render(); toast("Reconnected"); }); }
+    else { toast("Permission was not granted"); }
+  }).catch(function(){ toast("Could not reconnect to the file"); });
+}
+
+function disconnectDisk(){
+  if(!confirm("Stop saving to that file? The file itself is left alone.")) return;
+  fileHandle=null; diskState="off"; lastDiskWrite=null;
+  forgetHandle().then(function(){ render(); toast("No longer saving to a file"); });
+}
+
+function diskLabel(){
+  if(diskState==="connected")       return lastDiskWrite ? "file saved "+fmtTime(lastDiskWrite) : "file connected";
+  if(diskState==="needsPermission") return "file needs reconnecting";
+  if(diskState==="unsupported")     return "no file saving here";
+  return "no file chosen";
+}
+
+var saveTimer=null, writePending=false;
+function save(){
+  try{ syncStamp(); }catch(x){}
+  scheduleDisk();
+  if(!storeOK){ stamp(); return; }
+  clearTimeout(saveTimer);
+  writePending=true;
+  saveTimer=setTimeout(writeStore,120);
+}
+
+var pendingExternal=false, pendingNoticed=false;
+function writeStore(){
+  try{
+    var raw=localStorage.getItem(KEY), cur=0;
+    if(raw){ try{ cur=JSON.parse(raw).rev||0; }catch(x){} }
+    if(cur>(S.rev||0)){
+      var keepMine=confirm("The tracker was changed in another tab while you were working here.\n\n"+
+        "OK \u2014 keep what you just did in this tab. The other tab\u2019s change is overwritten.\n"+
+        "Cancel \u2014 keep the other tab\u2019s version. What you just did here is discarded.");
+      if(!keepMine){ writePending=false; pendingExternal=false; adoptStored(raw); toast("Loaded the other tab\u2019s version"); return; }
+    }
+    S.rev=Math.max(cur,(S.rev||0))+1;
+    S.savedBy=APP_VERSION;
+    localStorage.setItem(KEY, JSON.stringify(S));
+    writePending=false; pendingExternal=false; pendingNoticed=false;
+    stamp();
+  }catch(e){ writePending=false; toast("Could not autosave \u2014 export a backup."); }
+}
+function adoptStored(raw){
+  var d; try{ d=JSON.parse(raw); }catch(x){ return false; }
+  S=d; normaliseLoaded();
+  pendingExternal=false; pendingNoticed=false; alarmShowing=null;
+  render(); renderAlarm(); checkWriterVersion();
+  return true;
+}
+function syncFromStorage(){
+  if(!storeOK || !S) return;
+  var raw; try{ raw=localStorage.getItem(KEY); }catch(x){ return; }
+  if(!raw) return;
+  var rev=0; try{ rev=JSON.parse(raw).rev||0; }catch(x){ return; }
+  if(rev<=(S.rev||0)) return;
+  if(writePending || (veil && veil.classList.contains("on"))){
+    pendingExternal=true;
+    if(!pendingNoticed && veil && veil.classList.contains("on")){
+      pendingNoticed=true;
+      toast("Changed in another tab \u2014 finish this window first");
+    }
+    return;
+  }
+  adoptStored(raw);
+}
+function cmpVersion(a,b){
+  var x=String(a||"0").split("."), y=String(b||"0").split(".");
+  for(var i=0;i<3;i++){ var d=(parseInt(x[i],10)||0)-(parseInt(y[i],10)||0); if(d) return d; }
+  return 0;
+}
+function checkWriterVersion(){
+  var w=document.getElementById("tabWarn"); if(!w) return;
+  if(S && S.savedBy && cmpVersion(S.savedBy, APP_VERSION)>0){
+    w.innerHTML='A newer version (v'+esc(S.savedBy)+') is open in another tab. '+
+      '<button class="linkbtn" data-act="reloadtab">Reload this tab</button>';
+    w.style.display="block";
+  } else { w.style.display="none"; w.innerHTML=""; }
+}
+function scheduleDisk(){
+  if(diskState!=="connected") return;
+  clearTimeout(diskTimer);
+  diskTimer=setTimeout(writeDisk,700);
+}
+function stamp(){
+  var browser = storeOK ? ("browser "+fmtTime(new Date())) : "NOT autosaved";
+  var el=document.getElementById("lastSaved");
+  el.textContent = browser+" · "+diskLabel();
+  el.className = (diskState==="connected") ? "ok" : (storeOK?"":"bad");
+}
+
+function today(){ var d=new Date(); d.setHours(0,0,0,0); return d; }
+function parseD(s){ if(!s) return null; var p=String(s).split("-"); return new Date(+p[0],+p[1]-1,+p[2]); }
+function isoD(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function addDays(d,n){ var x=new Date(d.getTime()); x.setDate(x.getDate()+n); return x; }
+function daysBetween(a,b){ return Math.round((b-a)/86400000); }
+var DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtD(d){ return d? DOW[d.getDay()].slice(0,3)+" "+d.getDate()+" "+MON[d.getMonth()] : "—"; }
+function fmtLong(d){ return DOW[d.getDay()]+" "+d.getDate()+" "+MON[d.getMonth()]; }
+function fmtTime(d){ return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function relD(d){
+  var n=daysBetween(today(),d);
+  if(n===0) return "today"; if(n===1) return "tomorrow";
+  if(n<0) return Math.abs(n)+"d ago";
+  return "in "+n+"d";
+}
+function dayShort(n){ return DOW[n].slice(0,3); }
+function workDays(){
+  var w=(S && S.workDays);
+  return (w && w.length) ? w : [0,1,2,3,4,5,6];
+}
+function isWorkDay(d){ return workDays().indexOf(d.getDay())!==-1; }
+
+function workday(d){
+  if(!S || !S.workDays || !S.workDays.length) return d;
+  if(isWorkDay(d)) return d;
+  for(var i=1;i<=7;i++){
+    var back=addDays(d,-i); if(isWorkDay(back)) return back;
+    var fwd=addDays(d,i);   if(isWorkDay(fwd))  return fwd;
+  }
+  return d;
+}
+function nextWorkDay(d,inclusive){
+  var w=workDays();
+  if(inclusive && w.indexOf(d.getDay())!==-1) return d;
+  for(var i=1;i<=7;i++){
+    var n=addDays(d,i);
+    if(w.indexOf(n.getDay())!==-1) return n;
+  }
+  return addDays(d,1);
+}
+function workDaysLabel(){
+  var w=workDays();
+  if(w.length===7) return "every day";
+  return [1,2,3,4,5,6,0].filter(function(n){return w.indexOf(n)!==-1;}).map(dayShort).join(", ");
+}
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function stepProcess(s){ return s.process || ""; }
+function caseProcess(c){ return c.process || ""; }
+
+function appliesTo(step,c){
+  if(stepProcess(step)!==caseProcess(c)) return false;
+  if(step.inst && step.inst!=="*" && step.inst!==c.inst) return false;
+  if(step.units!=="*" && (!step.units || step.units.indexOf(c.unit)===-1)) return false;
+  if(step.when && step.when.length){
+    for(var i=0;i<step.when.length;i++){ if(!c[step.when[i]]) return false; }
+  }
+  return true;
+}
+function buildSteps(c){
+  var start=parseD(c.start), created=parseD(c.created)||today(), out=[];
+  S.template.forEach(function(s){
+    if(!appliesTo(s,c)) return;
+    out.push({
+      id:s.id, t:s.t, d:s.d, owner:s.owner, phase:s.phase||null,
+      needs: s.needs? s.needs.slice() : null,
+      due: isoD(computeDue(s,start,created)),
+      done:false, doneAt:null, note:""
+    });
+  });
+  return out;
+}
+function computeDue(s,start,created){
+  if(s.asap) return nextWorkDay(created,true);
+
+  var due = addDays(start, s.off||0);
+  var floor=addDays(created,1);
+  if(due<floor) due=floor;
+  due=workday(due);
+  if(due<created) due=workday(addDays(created,3));
+  return due;
+}
+function findStep(c,sid){ return c.steps.filter(function(x){return x.id===sid;})[0]; }
+function isBlocked(c,st){
+  if(!st.needs||!st.needs.length) return false;
+  for(var i=0;i<st.needs.length;i++){
+    var f=findStep(c,st.needs[i]);
+    if(f && !f.done) return true;
+  }
+  return false;
+}
+function blockedByName(c,st){
+  if(!st.needs) return "";
+  var n=[];
+  st.needs.forEach(function(id){ var f=findStep(c,id); if(f&&!f.done) n.push(f.t.toLowerCase()); });
+  return n.join(" and ");
+}
+function isActive(c){ return !c.archived && !c.cancelled; }
+function caseState(c){ return c.cancelled ? "cancelled" : (c.archived ? "archived" : "active"); }
+
+function phasesOf(c){
+  var order=[], seen={};
+  c.steps.forEach(function(s){
+    var ph=s.phase||"";
+    if(!seen[ph]){ seen[ph]=1; order.push(ph); }
+  });
+  return order;
+}
+function phaseProgress(c,ph){
+  var mine=c.steps.filter(function(s){ return (s.phase||"")===ph && s.owner!=="AUTO"; });
+  return { done: mine.filter(function(s){return s.done;}).length, total: mine.length };
+}
+function currentPhase(c){
+  var nx=nextOpen(c);
+  return nx ? (nx.phase||"") : "";
+}
+
+function caseProgress(c){
+  var mine=c.steps.filter(function(s){ return s.owner!=="AUTO"; });
+  return { done: mine.filter(function(s){return s.done;}).length, total: mine.length };
+}
+function nextOpen(c){
+  var o=c.steps.filter(function(s){ return !s.done && !isBlocked(c,s) && s.owner!=="AUTO"; });
+  o.sort(function(a,b){ return a.due<b.due?-1:1; });
+  return o[0]||null;
+}
+function instTag(c){
+  if(!c.inst) return "";
+  var gi=(S.groups||[]).indexOf(c.inst);
+  return '<span class="tag '+(gi===0?"g0":(gi===1?"g1":"plain"))+'">'+esc(c.inst)+'</span>';
+}
+function procTag(c){
+  return multiProcess() ? '<span class="tag plain">'+esc(proc(caseProcess(c)).label)+'</span>' : "";
+}
+function ownerLabel(o){ return o==="HRAM"?"Someone else": o==="AUTO"?"Automatic":"Yours"; }
+function ownerClass(o){ return o==="HRAM"?"": o==="AUTO"?"auto":"hra"; }
+
+function firstIntended(r){
+  var t=today();
+  if(r.freq==="yearly"){
+    var d=new Date(t.getFullYear(), r.month||0, r.day||1);
+    if(d<t) d=new Date(t.getFullYear()+1, r.month||0, r.day||1);
+    return isoD(d);
+  }
+  if(r.freq==="daily") return isoD(nextWorkDay(t,true));
+  if(r.freq==="quarterly") return isoD(addDays(t,7));
+  if(r.freq==="monthly") return isoD(new Date(t.getFullYear(), t.getMonth()+1, 1));
+  var target=(r.dow===undefined?4:r.dow);
+  return isoD(addDays(t,(target-t.getDay()+7)%7));
+}
+function firstOccurrence(r){
+  return isoD(workday(parseD(firstIntended(r))));
+}
+function advance(r){
+  if(r.freq==="daily"){ r.next=isoD(nextWorkDay(parseD(r.next),false)); r.anchor=r.next; return; }
+  var d=parseD(r.anchor||r.next);
+  if(r.freq==="weekly") d=addDays(d,7);
+  else if(r.freq==="biweekly") d=addDays(d,14);
+  else if(r.freq==="monthly") d=new Date(d.getFullYear(),d.getMonth()+1,d.getDate());
+  else if(r.freq==="quarterly") d=new Date(d.getFullYear(),d.getMonth()+3,d.getDate());
+  else if(r.freq==="yearly") d=new Date(d.getFullYear()+1,d.getMonth(),d.getDate());
+  else d=addDays(d,7);
+  r.anchor=isoD(d);
+  r.next=isoD(workday(d));
+}
+
+var view="week", openCase=null, draft=null, caseFrom="board";
+var main=document.getElementById("main");
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(m){
+  return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[m]; }); }
+function toast(m){ var e=document.getElementById("toast"); e.textContent=m;
+  e.classList.add("on"); setTimeout(function(){e.classList.remove("on");},2100); }
+
+function dueItems(days){
+  var h=addDays(today(), days===undefined?7:days), out=[];
+  S.cases.forEach(function(c){
+    if(!isActive(c)) return;
+    c.steps.forEach(function(s){
+      if(s.done || s.owner==="AUTO" || isBlocked(c,s)) return;
+      var d=parseD(s.due);
+      if(d<=h) out.push({kind:"step",date:d,c:c,s:s});
+    });
+  });
+  S.recurring.forEach(function(r){
+    var d=parseD(r.next);
+    if(d<=h) out.push({kind:"recur",date:d,r:r});
+  });
+  (S.tasks||[]).forEach(function(t){
+    if(t.done) return;
+    var from=parseD(t.remind||t.due);
+    var at=parseD(t.due||t.remind);
+    if(from && at && from<=h) out.push({kind:"task",date:at,t:t});
+  });
+  out.sort(function(a,b){
+    if(a.date-b.date) return a.date-b.date;
+    return priRank(a)-priRank(b);
+  });
+  return out;
+}
+function priOf(x){ return (x && x.pri) || "normal"; }
+function priRank(i){
+  var p = i.kind==="task" ? priOf(i.t) : "normal";
+  return p==="high"?0:(p==="low"?2:1);
+}
+function priClass(t){ var p=priOf(t); return p==="high"?"pri-high":(p==="low"?"pri-low":""); }
+function priTag(t){
+  var p=priOf(t);
+  if(p==="high") return '<span class="prio high">High</span>';
+  if(p==="low")  return '<span class="prio low">Low</span>';
+  return "";
+}
+
+function render(){
+  document.querySelectorAll(".navbtn").forEach(function(b){ b.classList.toggle("on", b.dataset.v===view); });
+  document.querySelector('.navbtn[data-v="new"]').textContent =
+    "New checklist";
+  var items=dueItems(), od=items.filter(function(i){return i.date<today();}).length;
+  var pw=document.getElementById("pillWeek"); pw.textContent=od; pw.classList.toggle("zero",od===0);
+  var act=S.cases.filter(isActive).length;
+  var pb=document.getElementById("pillBoard"); pb.textContent=act; pb.classList.toggle("zero",act===0);
+  ({week:renderWeek,board:renderBoard,"new":renderWizard,recur:renderRecur,
+    lib:renderLib,settings:renderSettings,data:renderData,"case":renderCase,done:renderDone,cal:renderCal}[view]||renderWeek)(items);
+  stamp();
+}
+function offDayItems(){
+  if(!S.workDays || !S.workDays.length || S.workDays.length===7) return [];
+  var out=[];
+  function off(iso){ return iso && !isWorkDay(parseD(iso)); }
+  S.cases.forEach(function(c){
+    if(!isActive(c)) return;
+    c.steps.forEach(function(st){
+      if(st.done || st.owner==="AUTO") return;
+      if(off(st.due)) out.push({kind:"step", c:c, s:st, date:st.due, label:st.t+" \u2014 "+c.name});
+    });
+  });
+  (S.tasks||[]).forEach(function(t){
+    if(t.done) return;
+    var d=t.due||t.remind;
+    if(off(d)) out.push({kind:"task", t:t, date:d, label:t.t});
+  });
+  (S.recurring||[]).forEach(function(r){
+    if(off(r.next)) out.push({kind:"recur", r:r, date:r.next, label:r.t+" (repeating)"});
+  });
+  return out;
+}
+function offDayNames(items){
+  var seen={};
+  items.forEach(function(i){ seen[parseD(i.date).getDay()]=1; });
+  return [1,2,3,4,5,6,0].filter(function(n){return seen[n];}).map(function(n){return DOW[n];}).join(", ");
+}
+function offDayNagHTML(){
+  var items=offDayItems(); if(!items.length) return "";
+  return '<div class="nag"><b>'+items.length+' open item'+(items.length>1?"s":"")+' on '+esc(offDayNames(items))+'.</b> '+
+    '<span>'+(items.length>1?"Those days are":"That day is")+' marked as a day off.</span>'+
+    '<button class="btn sm" data-act="moveoff" style="margin-left:auto">Move to my next planned day</button></div>';
+}
+function moveOffDays(){
+  var items=offDayItems(); if(!items.length) return;
+  var shown=items.slice(0,10).map(function(i){
+    return "\u2022 "+i.label+"  "+fmtD(parseD(i.date))+" \u2192 "+fmtD(workday(parseD(i.date)));
+  }).join("\n");
+  if(items.length>10) shown+="\n\u2026and "+(items.length-10)+" more";
+  if(!confirm("Move "+items.length+" item"+(items.length>1?"s":"")+" to your next planned day?\n\n"+shown)) return;
+  items.forEach(function(i){
+    var to=isoD(workday(parseD(i.date)));
+    if(i.kind==="step") i.s.due=to;
+    else if(i.kind==="recur"){ if(!i.r.anchor) i.r.anchor=i.r.next; i.r.next=to; }
+    else if(i.kind==="task"){
+      if(i.t.due) i.t.due=to; else i.t.remind=to;
+      if(i.t.remind && i.t.due && i.t.remind>i.t.due) i.t.remind=i.t.due;
+    }
+  });
+  save(); render();
+  toast(items.length+" item"+(items.length>1?"s":"")+" moved");
+}
+
+function nagHTML(){
+  if(!S.cases.length) return "";
+  if(diskState==="connected") return "";
+  if(diskState==="needsPermission")
+    return '<div class="nag"><b>Reconnect your data file.</b> <span>Changes are going to browser storage only '+
+      'until you do.</span><button class="btn sm" data-act="diskre" style="margin-left:auto">Reconnect</button></div>';
+  var d=S.lastExport? daysBetween(parseD(S.lastExport),today()) : 999;
+  if(d<7) return "";
+  return '<div class="nag"><b>Back this up.</b> <span>'+
+    (S.lastExport? "Last export was "+d+" days ago." : "You have not exported a backup yet.")+
+    ' Browser storage can be cleared without warning.</span>'+
+    '<button class="btn sm" data-act="export" style="margin-left:auto">Export now</button></div>';
+}
+
+function syncAgoLabel(){
+  if(!S.lastSync) return null;
+  var d=daysBetween(parseD(isoD(new Date(S.lastSync))),today());
+  return d<=0 ? "today" : (d===1 ? "yesterday" : d+" days ago");
+}
+function syncNagHTML(){
+  if(!S.multiDevice) return "";
+  var days=S.syncDays||3;
+  if(S.syncSnooze && S.syncSnooze>=isoD(today())) return "";
+  var ago=S.lastSync ? daysBetween(parseD(isoD(new Date(S.lastSync))),today()) : null;
+  if(ago!==null && ago<days) return "";
+  var when=syncAgoLabel();
+  return '<div class="nag calm"><b>'+(when?'Last synced '+esc(when)+'.':'This device has not synced yet.')+'</b> <span>'+
+    'A quick export and merge keeps your other devices matching.</span>'+
+    '<span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">'+
+    '<button class="btn sm" data-act="export">Export now</button>'+
+    '<button class="btn ghost sm" data-act="mergefile">Merge a file</button>'+
+    '<button class="btn ghost sm" data-act="syncsnooze">Later</button></span></div>';
+}
+function renderWeek(items){
+  var h='<div class="eyebrow">Today, and what carried over</div><h1>This week</h1>'+
+    '<div class="weekhead">'+
+    '<p class="lede">Everything with a date on it: every checklist, every repeating task, and anything you add yourself. Whatever slips just carries over. Nothing here is a test.</p>'+
+    '<div style="display:flex;gap:8px;flex:0 0 auto">'+
+    '<button class="btn ghost sm" data-act="done">Wins</button>'+
+    '<button class="btn ghost sm" data-act="eod">Day recap</button>'+
+    '<button class="btn ghost sm" data-act="taddp">+ Add a task</button></div></div>'+(S.multiDevice?syncNagHTML():nagHTML())+offDayNagHTML();
+  if(!items.length){
+    if(!PROCESSES.length){
+      h+='<div class="card" style="padding:22px 24px;max-width:640px"><b style="font-size:15px">Start small</b>'+
+        '<p class="dkp" style="margin:8px 0 14px">Tracker turns something you do again and again into a short checklist, and works out when each step is due, so you do not have to hold it all in your head. Steps can slip. That is fine; they just carry over.</p>'+
+        '<div class="eyebrow" style="margin:6px 0 8px">Try a starter</div>'+
+        starterPickerHTML()+
+        '<div class="eyebrow" style="margin:20px 0 8px">Or build your own</div>'+
+        '<div class="startlist">'+
+        '<div><span class="tnum">1</span><div><b>Make a goal</b> \u2014 something you repeat or want to get done: a routine, a chore, a form to file. <button class="linkbtn" data-act="gosettings">Settings</button></div></div>'+
+        '<div><span class="tnum">2</span><div><b>Give it small steps</b> \u2014 what to do, and how many days before or after the date. <button class="linkbtn" data-act="golib">Step library</button></div></div>'+
+        '<div><span class="tnum">3</span><div><b>Start a checklist</b> \u2014 one real run of it. <button class="linkbtn" data-act="gonew">New checklist</button></div></div>'+
+        '</div></div>';
+    } else {
+      h+='<div class="card empty"><b>Nothing due in the next seven days.</b>A clear week is allowed. Start a checklist when you want one, or look at the board for the ones you have already begun.</div>';
+    }
+    main.innerHTML=h+laterHTML(true)+undatedTasksHTML(); return;
+  }
+  var g={}; items.forEach(function(i){ (g[isoD(i.date)]=g[isoD(i.date)]||[]).push(i); });
+  h+='<div class="spine">';
+  Object.keys(g).sort().forEach(function(k){
+    var d=parseD(k), od=d<today(), td=isoD(today())===k;
+    h+='<div class="daygroup '+(od?"od":"")+' '+(td?"today":"")+'"><div class="dayhead"><span class="dot"></span>'+
+      '<div class="lbl">'+esc(fmtLong(d))+'</div><div class="sub tnum">'+esc(relD(d))+'</div></div>';
+    g[k].forEach(function(i){ h+=weekRowHTML(i,od); });
+    h+='</div>';
+  });
+  main.innerHTML=h+'</div>'+laterHTML()+undatedTasksHTML();
+}
+function weekRowHTML(i,od){
+  var h="";
+      if(i.kind==="task"){
+        h+='<div class="row task '+priClass(i.t)+' '+(od?"od":"")+'"><button class="tick" data-act="ttog" data-id="'+esc(i.t.id)+'"></button>'+
+          '<div class="bd"><div class="t1">'+esc(i.t.t)+'</div>'+
+          (i.t.note?'<div class="t2">'+esc(i.t.note)+'</div>':'')+
+          '<div class="who">'+
+            (i.t.cid?(function(){var c=S.cases.filter(function(x){return x.id===i.t.cid;})[0];
+              return c?'<a data-act="open" data-cid="'+esc(c.id)+'">'+esc(c.name)+'</a> · ':'';})():'')+
+            '<span class="free">task</span>'+priTag(i.t)+tsCountHTML(i.t)+
+            (i.t.remind && i.t.due && i.t.remind!==i.t.due?' <span class="due tnum">reminded '+esc(fmtD(parseD(i.t.remind)))+'</span>':'')+
+            '<button class="linkbtn" data-act="tedit" data-id="'+esc(i.t.id)+'">edit</button>'+
+            '<button class="linkbtn warn" data-act="tdel" data-id="'+esc(i.t.id)+'">delete</button>'+
+          '</div>'+tsListHTML(i.t)+'</div>'+
+          '</div>';
+      } else if(i.kind==="recur" && i.ghost){
+        h+='<div class="row rec ghost"><div class="bd"><div class="t1">'+esc(i.r.t)+'</div>'+
+          '<div class="who">Repeating \u00b7 '+esc(i.r.freq)+(i.r.time?" \u00b7 "+esc(i.r.time):"")+
+          ' \u00b7 <span class="free">expected \u2014 it can be ticked once the one before it is done</span></div></div></div>';
+      } else if(i.kind==="recur"){
+        h+='<div class="row rec '+(od?"od":"")+'"><button class="tick" data-act="rdone" data-id="'+esc(i.r.id)+'"></button>'+
+          '<div class="bd"><div class="t1">'+esc(i.r.t)+'</div>'+
+          (i.r.note?'<div class="t2">'+esc(i.r.note)+'</div>':'')+
+          '<div class="who">Repeating · '+esc(i.r.freq)+(i.r.time?" · "+esc(i.r.time):"")+
+          '<button class="linkbtn" data-act="recedit" data-id="'+esc(i.r.id)+'">edit</button>'+
+          '</div></div>'+
+          '</div>';
+      } else {
+        h+='<div class="row '+(od?"od":"")+(i.blocked?" waiting":"")+'"><button class="tick" data-act="tog" data-cid="'+esc(i.c.id)+'" data-sid="'+esc(i.s.id)+'"'+(i.blocked?" disabled":"")+'></button>'+
+          '<div class="bd"><div class="t1">'+esc(i.s.t)+'</div>'+
+          (i.s.d?'<div class="t2">'+esc(i.s.d)+'</div>':'')+
+          (i.s.note?'<div class="t2 stepnote">'+esc(i.s.note)+'</div>':'')+
+          '<div class="who"><a data-act="open" data-cid="'+esc(i.c.id)+'">'+esc(i.c.name)+'</a> · '+esc(i.c.unit)+
+          (i.c.inst?' · '+instTag(i.c):'')+(multiProcess()?' '+procTag(i.c):'')+
+          (i.s.owner==="HRAM"?' <span class="owner">Someone else</span>':'')+
+          (i.blocked?' <span class="free">waiting on '+esc(blockedByName(i.c,i.s))+'</span>':'')+
+          '<button class="linkbtn" data-act="editstep" data-cid="'+esc(i.c.id)+'" data-sid="'+esc(i.s.id)+'">edit</button>'+
+          '</div></div>'+
+          '</div>';
+      }
+  return h;
+}
+
+function undatedTasksHTML(){
+  var open=(S.tasks||[]).filter(function(t){ return !t.done && !t.due && !t.remind; });
+  if(!open.length) return "";
+  var h='<div class="notask"><h2 class="sec">No date</h2>'+
+    '<span class="hint">Has to happen, but not on a particular day.</span></div>'+
+    '<div class="card">';
+  open.forEach(function(t){
+    var c=t.cid ? S.cases.filter(function(x){return x.id===t.cid;})[0] : null;
+    h+='<div class="rr '+priClass(t)+'"><button class="tick" data-act="ttog" data-id="'+esc(t.id)+'"></button>'+
+      '<div class="sbody"><div class="s1">'+esc(t.t)+'</div>'+
+      (t.note?'<div class="s2">'+esc(t.note)+'</div>':'')+
+      tsListHTML(t)+
+      '<div class="smeta">'+
+      (c?'<button class="linkbtn" data-act="open" data-cid="'+esc(c.id)+'">'+esc(c.name)+'</button>':'<span class="free">one-off</span>')+
+      priTag(t)+tsCountHTML(t)+
+      '<button class="linkbtn" data-act="tedit" data-id="'+esc(t.id)+'">edit</button>'+
+      '<button class="linkbtn warn" data-act="tdel" data-id="'+esc(t.id)+'">delete</button>'+
+      '</div></div></div>';
+  });
+  return h+'</div>';
+}
+
+function colTint(name){
+  var n=String(name||"").toLowerCase();
+  if(/complet|done|finish|closed/.test(n)) return "t-done";
+  if(/wait|block|hold|pending/.test(n))    return "t-wait";
+  if(/progress|doing|active|current/.test(n)) return "t-prog";
+  return "";
+}
+
+function renderBoard(){
+  var h='<div class="eyebrow">Checklists</div><h1>Board</h1>'+
+    '<div class="boardhead">'+
+    '<p class="lede">One card per '+"checklist"+'. Drag between columns. Click a column name to rename it.</p>'+
+    '<button class="addcol" data-act="addcol">+ Column</button></div>'+nagHTML();
+  var act=S.cases.filter(isActive);
+  if(!act.length){
+    h+='<div class="card empty"><b>Nothing on the board.</b>Start one from '+"New checklist"+': answer a couple of questions and it builds the steps for you.</div>';
+    main.innerHTML=h; return;
+  }
+  h+='<div id="cols">';
+  S.columns.forEach(function(col){
+    var inc=act.filter(function(c){return c.col===col.id;});
+    h+='<div class="col '+colTint(col.name)+'" data-col="'+esc(col.id)+'"><div class="colhead">'+
+      '<span class="nm" contenteditable="true" data-act="rename" data-col="'+esc(col.id)+'">'+esc(col.name)+'</span>'+
+      '<span class="ct tnum">'+inc.length+'</span>'+
+      (S.columns.length>1?'<button class="x" data-act="delcol" data-col="'+esc(col.id)+'" title="Delete column">&times;</button>':'')+
+      '</div><div class="colbody">';
+    inc.forEach(function(c){
+      var p=caseProgress(c), nx=nextOpen(c), od=nx&&parseD(nx.due)<today();
+      h+='<div class="kc" draggable="true" data-cid="'+esc(c.id)+'" data-act="open">'+
+        '<div class="nm">'+esc(c.name)+'</div>'+
+        '<div class="meta">'+instTag(c)+procTag(c)+
+        '<span>'+esc(c.unit)+'</span><span class="tnum">· '+esc(proc(caseProcess(c)).cardDate)+' '+esc(fmtD(parseD(c.start)))+'</span></div>'+
+        '<div class="bar"><i style="width:'+(p.total?Math.round(p.done/p.total*100):0)+'%"></i></div>'+
+        '<div class="next '+(od?"od":"")+'">'+(nx? esc(nx.t)+" · "+esc(relD(parseD(nx.due))) : "All steps done")+'</div>'+
+        (nx&&nx.phase&&phasesOf(c).length>1?'<div class="phasenow">'+esc(nx.phase)+' · '+
+          (function(){var pp=phaseProgress(c,nx.phase);return pp.done+"/"+pp.total;})()+'</div>':'')+
+        '<div class="meta tnum" style="margin-top:4px">'+p.done+' of '+p.total+' done</div></div>';
+    });
+    h+='</div></div>';
+  });
+  main.innerHTML=h+'</div>';
+  wireDnD();
+}
+function wireDnD(){
+  var dragId=null;
+  document.querySelectorAll(".kc").forEach(function(el){
+    el.addEventListener("dragstart",function(e){ dragId=el.dataset.cid; el.classList.add("dragging");
+      e.dataTransfer.effectAllowed="move"; try{e.dataTransfer.setData("text/plain",dragId);}catch(x){} });
+    el.addEventListener("dragend",function(){ el.classList.remove("dragging"); dragId=null; });
+  });
+  document.querySelectorAll(".col").forEach(function(col){
+    col.addEventListener("dragover",function(e){ e.preventDefault(); col.classList.add("dragover"); });
+    col.addEventListener("dragleave",function(){ col.classList.remove("dragover"); });
+    col.addEventListener("drop",function(e){
+      e.preventDefault(); col.classList.remove("dragover");
+      var id=dragId; try{ id=e.dataTransfer.getData("text/plain")||dragId; }catch(x){}
+      var c=S.cases.filter(function(x){return x.id===id;})[0];
+      if(c){ c.col=col.dataset.col; save(); render(); }
+    });
+  });
+}
+
+function newDraft(pid){
+  var P=proc(pid);
+  var d={ process:P.id, name:"", start:isoD(addDays(today(),P.anchorAhead)), inst:null, unit:null, notes:"" };
+  flagsFor(P.id).forEach(function(f){ d[f.k]=false; });
+  return d;
+}
+function draftReady(){
+  var P=proc(draft.process);
+  return !!(draft.name.trim() && draft.start &&
+            (!asksGroup(P) || draft.inst) && (!asksUnit(P) || draft.unit));
+}
+function renderWizard(){
+  if(!PROCESSES.length){
+    main.innerHTML='<div class="eyebrow">New checklist</div><h1>New checklist</h1>'+
+      '<div class="card empty"><b>Nothing to start from yet.</b>A checklist is one run at a goal, so the goal comes first. '+
+      'Pick a starter below, or make your own goal in Settings and give it steps in the Step library.'+
+      '<div style="margin:16px 0 4px;text-align:left">'+starterPickerHTML()+'</div>'+
+      '<div style="margin-top:14px"><button class="btn ghost" data-act="gosettings">Make my own in Settings</button></div></div>';
+    return;
+  }
+  if(!draft) draft=newDraft(PROCESSES[0].id);
+  var P=proc(draft.process);
+  var ready=draftReady();
+  var count=0;
+  if(ready){
+    var tmp=Object.assign({created:isoD(today())},draft);
+    count=S.template.filter(function(s){ return appliesTo(s,tmp)&&s.owner!=="AUTO"; }).length;
+  }
+  var h='<div class="eyebrow">'+esc(P.eyebrow)+'</div><h1>'+esc(P.title)+'</h1>'+
+    '<p class="lede">'+esc(P.lede)+'</p>'+
+    '<div class="card wiz"><div class="qs">';
+
+  if(multiProcess()){
+    h+='<div class="q"><label class="f">Which goal</label><div class="opts">';
+    PROCESSES.forEach(function(x){
+      h+='<button class="opt '+(draft.process===x.id?"on":"")+'" data-act="wp" data-v="'+esc(x.id)+'">'+esc(x.label)+'</button>';
+    });
+    h+='</div></div>';
+  }
+
+  h+='<div class="q grid2"><div><label class="f">'+esc(P.subjectLabel)+'</label>'+
+      '<input type="text" id="wName" placeholder="'+esc(P.subjectHint)+'" value="'+esc(draft.name)+'"></div>'+
+      '<div><label class="f">'+esc(P.anchorLabel)+'</label><input type="date" id="wStart" value="'+esc(draft.start)+'"></div></div>';
+
+  if(asksGroup(P)){
+    h+='<div class="q"><label class="f">Category</label><div class="opts">';
+    S.groups.forEach(function(g,gi){
+      h+='<button class="opt '+(gi===0?"g0 ":(gi===1?"g1 ":""))+(draft.inst===g?"on":"")+'" data-act="w" data-k="inst" data-v="'+esc(g)+'">'+esc(g)+'</button>';
+    });
+    h+='</div></div>';
+  }
+  if(asksUnit(P)){
+    h+='<div class="q"><label class="f">Unit</label><div class="opts">';
+    S.units.forEach(function(u){
+      h+='<button class="opt '+(draft.unit===u?"on":"")+'" data-act="w" data-k="unit" data-v="'+esc(u)+'">'+esc(u)+'</button>';
+    });
+    h+='</div><div class="hint">Units are editable in Settings.</div></div>';
+  }
+  h+='<div class="q"><label class="f">Notes</label>'+
+    '<textarea id="wNotes" placeholder="Anything to keep in mind this time: what is different, who is involved, what you do not want to forget" style="min-height:64px">'+esc(draft.notes||"")+'</textarea>'+
+    '<div class="hint">Sits at the top of the checklist the whole way through. Optional.</div></div>';
+  if(flagsFor(P.id).length){
+    h+='<div class="q"><label class="f">'+esc(P.flagsLabel||"Anything else that applies")+'</label><div class="opts">';
+    flagsFor(P.id).forEach(function(f){
+      h+='<button class="opt '+(draft[f.k]?"on":"")+'" data-act="wt" data-k="'+f.k+'">'+esc(f.label)+'</button>';
+    });
+    h+='</div></div>';
+  }
+  h+='</div>';
+
+  if(ready) h+='<div class="preview">This builds <b class="tnum">'+count+'</b> steps for you. Dates come from the '+esc(P.anchorPhrase)+
+    (workDays().length===7?"":" and land only on "+esc(workDaysLabel()))+'.</div>';
+  h+='<div class="wizfoot"><button class="btn" data-act="create" '+(ready?"":"disabled")+'>Create checklist</button>'+
+    '<button class="btn ghost" data-act="wreset">Clear</button></div></div>';
+  main.innerHTML=h;
+  var n=document.getElementById("wName");
+  n.addEventListener("input",function(){ draft.name=n.value;
+    document.querySelector('[data-act=create]').disabled=!draftReady(); });
+  document.getElementById("wStart").addEventListener("change",function(e){ draft.start=e.target.value; });
+  var nt=document.getElementById("wNotes");
+  if(nt) nt.addEventListener("input",function(){ draft.notes=nt.value; });
+}
+
+function renderCase(){
+  var c=S.cases.filter(function(x){return x.id===openCase;})[0];
+  if(!c){ view="board"; render(); return; }
+  var p=caseProgress(c);
+  var PC=proc(caseProcess(c));
+  var missing = S.template.filter(function(t){
+    return appliesTo(t,c) && !findStep(c,t.id);
+  }).length;
+
+  var _backLabel = caseFrom==="data" ? "Backup" : (caseFrom==="week" ? "This week" : (caseFrom==="done" ? "Wins" : (caseFrom==="cal" ? "Calendar" : "Board")));
+  var h='<button class="btn ghost sm" data-act="back">&larr; '+_backLabel+'</button>'+
+    '<div class="detailhead" style="margin-top:14px"><div>'+
+    '<div class="eyebrow">'+esc(PC.label)+
+      (c.cancelled?' &middot; cancelled':(c.archived?' &middot; archived':''))+
+      '</div><h1>'+esc(c.name)+'</h1><div class="facts">'+
+    (c.inst?'<div class="fact"><div class="k">Category</div><div class="v">'+instTag(c)+'</div></div>':'')+
+    (PC.asksUnit && c.unit?'<div class="fact"><div class="k">Unit</div><div class="v">'+esc(c.unit)+'</div></div>':'')+
+    '<div class="fact"><div class="k">'+esc(PC.anchorLabel)+'</div><div class="v tnum">'+esc(fmtD(parseD(c.start)))+'</div></div>'+
+    '<div class="fact"><div class="k">Progress</div><div class="v tnum">'+p.done+' / '+p.total+'</div></div>'+
+    (function(){
+      var on=flagsFor(caseProcess(c)).filter(function(f){ return !!c[f.k]; });
+      if(!on.length) return "";
+      return '<div class="fact"><div class="k">'+esc(PC.flagsLabel||"Also")+'</div>'+
+        '<div class="v" style="font-size:13px">'+on.map(function(f){ return esc(f.label.split(" \u2014")[0]); }).join("<br>")+'</div></div>';
+    })()+
+    '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">'+
+    '<button class="btn ghost sm" data-act="editcase">Edit details</button>'+
+    '<button class="btn ghost sm" data-act="copyrow">Copy as spreadsheet row</button>'+
+    (c.cancelled
+      ? '<button class="btn ghost sm" data-act="reopen" data-cid="'+esc(c.id)+'">Reopen</button>'
+      : '<button class="btn ghost sm" data-act="cancelcase">Cancel checklist</button>')+
+    '<button class="btn ghost sm" data-act="archive">Archive</button></div></div>';
+
+  if(c.cancelled)
+    h+='<div class="nag"><b>Cancelled'+(c.cancelledAt?" "+esc(fmtD(parseD(c.cancelledAt))):"")+'.</b>'+
+      '<span>'+(c.cancelReason?esc(c.cancelReason):"No reason recorded")+
+      ' — nothing here is due, and it is off the board.</span>'+
+      '<button class="btn sm" data-act="reopen" data-cid="'+esc(c.id)+'" style="margin-left:auto">Reopen</button></div>';
+
+  h+='<div class="card notecard"><div class="secthead"><span>Notes</span><span class="sp"></span>'+
+    '<button class="linkbtn" data-act="editnotes">'+(c.notes?"edit":"add")+'</button></div>'+
+    (c.notes?'<div class="notebody">'+esc(c.notes)+'</div>'
+            :'<div class="notebody empty2">Anything to keep in mind while you work through this one.</div>')+
+    '</div>';
+
+  var mine=S.tasks.filter(function(t){return t.cid===c.id;});
+  if(mine.length){
+    h+='<div class="card" style="margin-bottom:14px"><div class="secthead"><span>Tasks</span>'+
+      '<span class="sp"></span><button class="linkbtn" data-act="taddc" data-cid="'+esc(c.id)+'">+ add</button></div>';
+    mine.forEach(function(t){
+      h+='<div class="rr"><button class="tick'+(t.done?" on":"")+'" data-act="ttog" data-id="'+esc(t.id)+'"></button>'+
+        '<div class="sbody"><div class="s1"'+(t.done?' style="text-decoration:line-through;color:var(--muted)"':'')+'>'+esc(t.t)+'</div>'+
+        (t.note&&!t.done?'<div class="s2">'+esc(t.note)+'</div>':'')+
+        (t.done?'':tsListHTML(t))+
+        '<div class="smeta">'+tsCountHTML(t)+
+        '<button class="linkbtn" data-act="tedit" data-id="'+esc(t.id)+'">edit</button>'+
+        '<button class="linkbtn warn" data-act="tdel" data-id="'+esc(t.id)+'">delete</button>'+
+        '</div></div></div>';
+    });
+    h+='</div>';
+  }
+
+  if(missing) h+='<div class="nag"><b>'+missing+' new step'+(missing>1?"s":"")+' in the library</b>'+
+    '<span>added since this checklist was created.</span>'+
+    '<button class="btn sm" data-act="sync" style="margin-left:auto">Add them to this checklist</button></div>';
+
+  h+='<div class="card"><div class="secthead"><span>Steps</span><span class="sp"></span>'+
+    (mine.length?'':'<button class="linkbtn" data-act="taddc" data-cid="'+esc(c.id)+'">+ task</button>')+
+     '<button class="linkbtn" data-act="addstep">+ Add a step</button></div>';
+  var _phases=phasesOf(c);
+  var _order=[];
+  _phases.forEach(function(ph){
+    c.steps.forEach(function(s,i){ if((s.phase||"")===ph) _order.push({s:s,i:i,ph:ph}); });
+  });
+  var _seenPhase={};
+  _order.forEach(function(entry){
+    var s=entry.s, i=entry.i, _ph=entry.ph;
+    if(_phases.length>1 && !_seenPhase[_ph]){
+      _seenPhase[_ph]=1;
+      var pp=phaseProgress(c,_ph);
+      h+='<div class="phasehead"><span class="pn">'+esc(_ph||"Other")+'</span>'+
+         '<span class="pc tnum">'+pp.done+' / '+pp.total+'</span>'+
+         '<span class="pbar"><i style="width:'+(pp.total?Math.round(pp.done/pp.total*100):0)+'%"></i></span></div>';
+    }
+    var blocked=isBlocked(c,s), chained=!!(s.needs&&s.needs.length);
+    var dd=parseD(s.due), od=!s.done&&!blocked&&dd<today();
+    h+='<div class="step '+(s.done?"done":"")+' '+(blocked?"blocked":"")+' '+(chained?"chained":"")+' '+(chained&&!blocked?"unlocked":"")+'">'+
+      '<button class="tick '+(s.done?"on":"")+'" data-act="tog" data-cid="'+esc(c.id)+'" data-sid="'+esc(s.id)+'" '+(blocked?"disabled":"")+'>'+(s.done?"&#10003;":"")+'</button>'+
+      '<div class="sbody"><div class="s1">'+esc(s.t)+'</div>'+
+      (s.d?'<div class="s2">'+esc(s.d)+'</div>':'')+
+      '<div class="smeta">'+
+        '<input type="date" class="dateinline" value="'+esc(s.due)+'" data-act="setdue" data-cid="'+esc(c.id)+'" data-sid="'+esc(s.id)+'" title="Change the due date">'+
+        '<span class="due '+(od?"od":"")+' tnum">'+(s.done?"done":esc(relD(dd)))+'</span>'+
+        '<span class="owner '+ownerClass(s.owner)+'">'+esc(ownerLabel(s.owner))+'</span>'+
+        (blocked?'<span class="blockmsg">Waiting on: '+esc(blockedByName(c,s))+'</span>':'')+
+        '<button class="linkbtn" data-act="editstep" data-cid="'+esc(c.id)+'" data-sid="'+esc(s.id)+'">edit</button>'+
+        '<button class="linkbtn" data-act="note" data-cid="'+esc(c.id)+'" data-sid="'+esc(s.id)+'">'+(s.note?"edit note":"note")+'</button>'+
+        (i>0?'<button class="linkbtn" data-act="smove" data-cid="'+esc(c.id)+'" data-sid="'+esc(s.id)+'" data-dir="-1">up</button>':'')+
+        (i<c.steps.length-1?'<button class="linkbtn" data-act="smove" data-cid="'+esc(c.id)+'" data-sid="'+esc(s.id)+'" data-dir="1">down</button>':'')+
+        '<button class="linkbtn warn" data-act="delstep" data-cid="'+esc(c.id)+'" data-sid="'+esc(s.id)+'">remove</button>'+
+      '</div>'+
+      (s.note?'<div class="s2" style="border-left:2px solid var(--rule);padding-left:8px;margin-top:6px">'+esc(s.note)+'</div>':'')+
+      '</div></div>';
+  });
+  main.innerHTML=h+'</div>';
+}
+
+function renderLib(){
+  var h='<div class="eyebrow">Steps for your goals</div><h1>Step library</h1>'+
+    '<p class="lede">The master list new checklists are built from. Editing here does not disturb checklists already running — open a checklist and use "Add them to this checklist" to pull new steps in.</p>'+
+    '<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+    '<button class="btn" data-act="libadd">+ Add a step</button>'+
+    '</div>'+
+    '';
+  PROCESSES.forEach(function(P){
+    var rows=S.template.filter(function(x){ return stepProcess(x)===P.id; });
+    h+='<h2 class="libhead">'+esc(P.label)+' <span>'+rows.length+' steps</span></h2>';
+    h+='<div class="card" style="margin-bottom:16px">';
+    if(!rows.length) h+='<div class="empty"><b>No steps yet.</b>Add the first one for '+esc(P.label.toLowerCase())+'.</div>';
+    var _ph=[]; rows.forEach(function(x){ var k=x.phase||""; if(_ph.indexOf(k)===-1) _ph.push(k); });
+    var ordered=[];
+    _ph.forEach(function(k){ rows.forEach(function(x){ if((x.phase||"")===k) ordered.push({s:x,ph:k}); }); });
+    var lastPhase=null;
+    ordered.forEach(function(o,idx){
+      var s=o.s;
+      var firstInPhase = idx===0 || ordered[idx-1].ph!==o.ph;
+      var lastInPhase  = idx===ordered.length-1 || ordered[idx+1].ph!==o.ph;
+      var scope=[];
+      if(asksGroup(P)) scope.push(s.inst==="*"?"all categories":s.inst);
+      if(asksUnit(P)) scope.push(s.units==="*"?"all units":(s.units.length+" unit"+(s.units.length>1?"s":"")));
+      if(s.when&&s.when.length) scope.push("only if "+s.when.map(function(k){
+        var f=flagsFor(P.id).filter(function(x){return x.k===k;})[0]; return f?f.label.split(" —")[0].toLowerCase():k; }).join(" + "));
+      var timing = s.asap? "as soon as the checklist opens"
+        : (s.off===0? "on the "+P.anchorPhrase : (s.off<0? Math.abs(s.off)+" days before "+P.anchorPhrase : s.off+" days after "+P.anchorPhrase));
+      if(o.ph && firstInPhase){ h+='<div class="libphase">'+esc(o.ph)+'</div>'; }
+      h+='<div class="lib"><div class="ord">'+
+        (!firstInPhase?'<button data-act="libmove" data-id="'+esc(s.id)+'" data-dir="-1" title="Move up">&#9650;</button>':'<span style="height:16px"></span>')+
+        (!lastInPhase?'<button data-act="libmove" data-id="'+esc(s.id)+'" data-dir="1" title="Move down">&#9660;</button>':'')+
+        '</div><div class="sbody"><div class="s1">'+esc(s.t)+'</div>'+
+        '<div class="smeta"><span class="owner '+ownerClass(s.owner)+'">'+esc(ownerLabel(s.owner))+'</span>'+
+        (scope.length?'<span class="due">'+esc(scope.join(" · "))+'</span>':'')+
+        '<span class="due tnum">'+esc(timing)+'</span>'+
+        (s.needs&&s.needs.length?'<span class="blockmsg">after '+esc(s.needs.map(function(n){
+          var f=S.template.filter(function(x){return x.id===n;})[0]; return f?f.t.toLowerCase():n; }).join(", "))+'</span>':'')+
+        '<button class="linkbtn" data-act="libedit" data-id="'+esc(s.id)+'">edit</button>'+
+        '<button class="linkbtn warn" data-act="libdel" data-id="'+esc(s.id)+'">delete</button>'+
+        '</div></div></div>';
+    });
+    h+='</div>';
+  });
+  main.innerHTML=h;
+}
+
+function renderRecur(){
+  var h='<div class="eyebrow">Comes round again</div><h1>Repeating</h1>'+
+    '<p class="lede">Things that come round on a schedule: laundry, bills, watering the plants. Keep hard deadlines in your calendar too. This is a second pair of eyes, not a replacement.</p>'+
+    '<div style="margin-bottom:12px"><button class="btn" data-act="recadd">+ Add a repeating task</button></div><div class="card">';
+  if(!S.recurring.length) h+='<div class="empty"><b>Nothing repeating yet.</b>Add the things that come round again and that nothing else will ever remind you about.</div>';
+  S.recurring.forEach(function(r){
+    var dd=parseD(r.next), od=dd<today();
+    h+='<div class="rr"><button class="tick" data-act="rdone" data-id="'+esc(r.id)+'" title="Done — roll to next"></button>'+
+      '<div class="sbody"><div class="s1">'+esc(r.t)+'</div>'+
+      (r.note?'<div class="s2">'+esc(r.note)+'</div>':'')+
+      '<div class="smeta">'+
+      '<input type="date" class="dateinline" value="'+esc(r.next)+'" data-act="setrnext" data-id="'+esc(r.id)+'" title="Change the next date">'+
+      '<span class="due '+(od?"od":"")+' tnum">'+esc(relD(dd))+'</span>'+
+      '<span class="owner">'+esc(r.freq)+'</span>'+
+      (r.time?'<span class="due tnum">'+esc(r.time)+'</span>':'')+
+      '<button class="linkbtn" data-act="recedit" data-id="'+esc(r.id)+'">edit</button>'+
+      '<button class="linkbtn warn" data-act="recdel" data-id="'+esc(r.id)+'">delete</button>'+
+      '</div></div></div>';
+  });
+  main.innerHTML=h+'</div>';
+}
+
+function renderSettings(){
+  var h='<div class="eyebrow">Configuration</div><h1>Settings</h1>'+
+    '<p class="lede">Goals, units, categories, columns and scheduling behaviour.</p>'+
+    '<h2 class="sec">Units</h2><div class="card" style="padding:16px 18px;max-width:640px">'+
+    '<div class="opts">';
+  S.units.forEach(function(u){
+    h+='<span class="opt sm" style="display:inline-flex;gap:7px;align-items:center">'+esc(u)+
+       '<button class="linkbtn warn" data-act="unitdel" data-u="'+esc(u)+'" title="Remove">&times;</button></span>';
+  });
+  h+='</div><div style="margin-top:12px;display:flex;gap:8px">'+
+    '<input type="text" id="newUnit" placeholder="New unit (a person, place or thing)">'+
+    '<button class="btn sm" data-act="unitadd">Add</button></div>'+
+    '<div class="hint">Optional. Use units when the same kind of checklist is for different people, places or things: you, a partner, the car. A step can be limited to some units. Leave the list empty if you do not need it. Removing a unit does not affect checklists already using it.</div></div>'+
+
+    '<h2 class="sec">Categories</h2><div class="card" style="padding:16px 18px;max-width:640px">'+
+    '<div class="opts">'+
+    S.groups.map(function(g,gi){
+      return '<span class="opt sm '+(gi===0?"g0 on":(gi===1?"g1 on":""))+'" style="display:inline-flex;gap:7px;align-items:center">'+esc(g)+
+        '<button class="linkbtn warn" data-act="groupdel" data-g="'+esc(g)+'" title="Remove">&times;</button></span>';
+    }).join("")+
+    '</div><div style="margin-top:12px;display:flex;gap:8px">'+
+    '<input type="text" id="newGroup" placeholder="New category">'+
+    '<button class="btn sm" data-act="groupadd">Add</button></div>'+
+    '<div class="hint">A second way to split checklists, for when the same kind of checklist runs differently depending on something \u2014 two homes, two pets, two ways of doing it. A step can be limited to one category. The first two get a colour. Leave empty if you do not need it.</div></div>'+
+
+    '<h2 class="sec">Goals</h2><div class="card" style="padding:16px 18px;max-width:640px">'+
+    (function(){
+      var r='<div style="display:flex;flex-direction:column;gap:8px">';
+      PROCESSES.forEach(function(P){
+        var nSteps=S.template.filter(function(x){return stepProcess(x)===P.id;}).length;
+        var nCases=S.cases.filter(function(c){return caseProcess(c)===P.id;}).length;
+        r+='<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">'+
+          '<b style="font-size:13px;font-weight:600">'+esc(P.label)+'</b>'+
+          '<span class="due">'+nSteps+' step'+(nSteps===1?"":"s")+
+            (nCases?' · '+nCases+' checklist'+(nCases===1?"":"s"):"")+'</span>'+
+          '<span style="flex:1"></span>'+
+          (P.custom?'<button class="linkbtn" data-act="procedit" data-id="'+esc(P.id)+'">edit</button>'+
+                    '<button class="linkbtn warn" data-act="procdel" data-id="'+esc(P.id)+'">delete</button>'
+                  :'<span class="hint" style="margin:0">edit its steps in the Step library</span>')+
+          '</div>';
+      });
+      return r+'</div>';
+    })()+
+    '<div style="margin-top:14px"><button class="btn sm" data-act="procadd">+ New goal</button></div>'+
+    '<div class="hint">A goal is something you want to get done or keep up: a routine, a bill, an appointment. Create it here, then give it steps in the Step library. It gets its own dates, its own board cards and its own place in This week.</div></div>'+
+
+    '<h2 class="sec">Starter goals</h2><div class="card" style="padding:16px 18px;max-width:640px">'+
+    starterPickerHTML()+
+    '<div class="hint">Adds the goal and its steps to your own lists. Change anything afterwards, or delete it.</div></div>'+
+
+    '<h2 class="sec">Board columns</h2><div class="card" style="padding:16px 18px;max-width:640px"><div class="opts">';
+  S.columns.forEach(function(col){
+    h+='<span class="opt sm">'+esc(col.name)+'</span>';
+  });
+  h+='</div><div class="hint">Rename by clicking a column heading on the board. Add and delete there too.</div></div>'+
+
+    '<h2 class="sec">Scheduling</h2><div class="card" style="padding:16px 18px;max-width:640px">'+
+    '<label class="f">The days you plan things</label>'+
+    '<div class="opts">'+
+      [1,2,3,4,5,6,0].map(function(n){
+        return '<button class="opt sm '+(workDays().indexOf(n)!==-1?"on":"")+'" data-act="togday" data-d="'+n+'">'+
+          esc(dayShort(n))+'</button>';
+      }).join("")+
+    '</div>'+
+    '<div class="hint">Two things use this. New due dates land on the nearest of these days rather than a day you have off \u2014 <b>'+esc(workDaysLabel())+'</b> at the moment. And a <b>daily</b> repeating task means one of these days, not seven.<br>'+
+    'Existing dates are not changed automatically \u2014 if open items are left on a day you turn off, This week offers to move them. Turn every day on to stop nudging altogether.</div>'+
+    '<label class="f" style="margin-top:18px">Evening check-in reminder</label>'+
+    '<div style="display:flex;align-items:center;gap:10px"><input type="time" id="eodTime" data-act="seteod" value="'+esc(eodTime())+'" style="width:136px">'+
+    '<span class="hint" style="margin:0">Optional. Pick a time for a gentle nudge to look back at your day; leave it empty for none.</span></div></div>';
+  main.innerHTML=h;
+  var ni=document.getElementById("newUnit");
+  if(ni) ni.addEventListener("keydown",function(e){ if(e.key==="Enter") addUnit(); });
+  var ng=document.getElementById("newGroup");
+  if(ng) ng.addEventListener("keydown",function(e){ if(e.key==="Enter") addGroup(); });
+}
+
+function diskPanel(){
+  var box='<div class="card diskcard" style="padding:18px 20px;max-width:640px">';
+
+  if(diskState==="unsupported"){
+    return box+'<div class="dk bad">Saving to a folder is not available here</div>'+
+      '<p class="dkp">This browser (Safari on iPhone and iPad, and some others) will not let an app write into a folder. '+
+      'Your data lives in this device\u2019s app storage, so the exported backup below is the thing protecting it. '+
+      'Export once a week and keep the file in Files or iCloud Drive. On iPhone, add the app to your Home Screen so the system does not clear its storage.</p></div>';
+  }
+  if(diskState==="connected"){
+    return box+'<div class="dk ok">Saving to your data file</div>'+
+      '<p class="dkp">Every change is written to the file you chose, as well as to browser storage. '+
+      'If browser storage is ever cleared, use <b>Open a data file</b> to pick that file back up and carry on.</p>'+
+      '<div class="dkrow">'+(lastDiskWrite?'Last written '+esc(fmtTime(lastDiskWrite)):'Waiting for the first change')+'</div>'+
+      '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px">'+
+      '<button class="btn ghost" data-act="diskopen">Open a different file</button>'+
+      '<button class="btn ghost" data-act="diskoff">Stop saving to a file</button></div></div>';
+  }
+  if(diskState==="needsPermission"){
+    return box+'<div class="dk warn">Your data file needs reconnecting</div>'+
+      '<p class="dkp">The browser drops write permission when the tab is closed. One click restores it. '+
+      'Until you do, changes are going to browser storage only.</p>'+
+      '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px">'+
+      '<button class="btn" data-act="diskre">Reconnect</button>'+
+      '<button class="btn ghost" data-act="diskpick">Choose a different file</button></div></div>';
+  }
+  return box+'<div class="dk">No data file chosen yet</div>'+
+    '<p class="dkp">Pick a file once — put it somewhere sensible like '+
+    '<code>Documents\\Tracker\\data\\</code> — and every change from then on is written straight to it. '+
+    'That file is yours: you can see it, copy it somewhere backed up, and it survives anything the browser does.</p>'+
+    '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px">'+
+    '<button class="btn" data-act="diskpick">Choose a data file</button>'+
+    '<button class="btn ghost" data-act="diskopen">Open an existing one</button></div></div>';
+}
+
+var bulkSel=Object.create(null);
+function bulkCount(){ return Object.keys(bulkSel).length; }
+function bulkClear(){ bulkSel=Object.create(null); }
+function bulkToggle(id){ if(bulkSel[id]) delete bulkSel[id]; else bulkSel[id]=1; render(); }
+
+function closedSection(title, list, cancelled){
+  var ids=list.map(function(c){return c.id;});
+  var selHere=ids.filter(function(id){return bulkSel[id];}).length;
+  var h='<div class="closedhead"><h2 class="sec">'+esc(title)+'</h2>'+
+    '<button class="linkbtn" data-act="bulkall" data-ids="'+esc(ids.join(","))+'">'+
+      (selHere===ids.length?"Clear all":"Select all")+'</button></div>'+
+    '<div class="card">';
+  list.forEach(function(c){
+    var on=!!bulkSel[c.id];
+    h+='<div class="rr'+(on?" selected":"")+'">'+
+      '<button class="selbox'+(on?" on":"")+'" data-act="bulksel" data-cid="'+esc(c.id)+'" '+
+        'title="Select" aria-pressed="'+(on?"true":"false")+'"></button>'+
+      '<div class="sbody"><div class="s1">'+esc(c.name)+'</div>'+
+      (cancelled?'<div class="s2">'+(c.cancelReason?esc(c.cancelReason):"No reason recorded")+
+        (c.cancelledAt?' · '+esc(fmtD(parseD(c.cancelledAt))):"")+'</div>':'')+
+      '<div class="smeta">'+
+      (cancelled?'<span class="tag plain">'+esc(proc(caseProcess(c)).label)+'</span>':'')+
+      '<span class="due">'+esc(c.unit||"")+(c.inst?" · "+esc(c.inst):"")+'</span>'+
+      '<button class="linkbtn" data-act="viewclosed" data-cid="'+esc(c.id)+'">view</button>'+
+      '<button class="linkbtn" data-act="'+(cancelled?"reopen":"unarchive")+'" data-cid="'+esc(c.id)+'">'+
+        (cancelled?"reopen":"restore")+'</button>'+
+      '<button class="linkbtn warn" data-act="delcase" data-cid="'+esc(c.id)+'">delete permanently</button>'+
+      '</div></div></div>';
+  });
+  return h+'</div>';
+}
+function bulkBar(){
+  var n=bulkCount(); if(!n) return "";
+  return '<div class="bulkbar"><b>'+n+'</b> selected'+
+    '<span class="sp"></span>'+
+    '<button class="btn ghost sm" data-act="bulknone">Clear</button>'+
+    '<button class="btn danger sm" data-act="bulkdel">Delete '+n+' permanently</button></div>';
+}
+function bulkDelete(){
+  var ids=Object.keys(bulkSel); if(!ids.length) return;
+  var names=S.cases.filter(function(c){return bulkSel[c.id];}).map(function(c){return c.name;});
+  var shown=names.slice(0,8).join("\n");
+  if(names.length>8) shown+="\n…and "+(names.length-8)+" more";
+  if(!confirm("Delete "+ids.length+" checklist"+(ids.length>1?"s":"")+" permanently?\n\n"+shown+
+     "\n\nThis cannot be undone.")) return;
+  S.cases=S.cases.filter(function(c){return !bulkSel[c.id];});
+  bulkClear(); save(); render();
+  toast(ids.length+" checklist"+(ids.length>1?"s":"")+" deleted");
+}
+
+function renderData(){
+  var arch=S.cases.filter(function(c){return c.archived && !c.cancelled;});
+  var canc=S.cases.filter(function(c){return c.cancelled;});
+  var h='<div class="eyebrow">Your data</div><h1>Where your data lives</h1>'+
+    '<p class="lede">Browser storage is quick but the browser owns it. A file on disk is yours.</p>'+
+    bulkBar()+
+    '<div class="verline">Running <b>version '+esc(APP_VERSION)+'</b>, released '+esc(fmtLong(parseD(APP_VERSION_DATE)))+
+      '. Every backup you export records this, so you can always tell which build wrote a file.'+
+      (S.appVersion && S.appVersion!==APP_VERSION
+        ? ' Your data was last exported from <b>'+esc(S.appVersion)+'</b>.' : '')+'</div>'+
+    diskPanel()+
+    '<h2 class="sec">Manual backup</h2>'+
+    '<div class="card" style="padding:18px 20px;max-width:640px">'+
+    '<div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px">'+
+    '<button class="btn" data-act="export">Export backup</button>'+
+    (canShareFiles()?'<button class="btn ghost" data-act="exportdl">Download instead</button>':'')+
+    '<button class="btn ghost" data-act="import">Import and merge</button>'+
+    '<button class="btn ghost" data-act="importreplace">Restore (replace everything)</button>'+
+    (hasUndo()?'<button class="btn ghost" data-act="undoimport">Undo last import</button>':'')+
+    '<input type="file" id="fileIn" accept="application/json,.json" style="display:none">'+
+    '<input type="file" id="fileRep" accept="application/json,.json" style="display:none"></div>'+
+    '<div class="hint" style="margin:-4px 0 14px">'+(canShareFiles()?'<b>On this device</b> Export opens the share sheet: choose <b>Save to Files</b>, then iCloud Drive, and it appears on your other devices. ':'')+'<b>Import and merge</b> combines a backup with what is on this device. The newer change to each item wins, steps are merged one by one, and deletions carry over. Use it to bring your phone and your Mac together: export on one, import on the other, then do it the other way round. <b>Restore</b> throws away what is here and uses the file instead.</div>'+
+    '<div style="font-size:12.5px;color:var(--muted);line-height:1.6">'+
+    '<div><b style="color:var(--ink)">Browser storage:</b> '+(storeOK?"working":"blocked here — save to a file or export before you close the tab")+'</div>'+
+    '<div><b style="color:var(--ink)">Last export:</b> '+(S.lastExport?esc(S.lastExport):"never")+'</div>'+
+    '<div><b style="color:var(--ink)">Last synced:</b> '+(S.lastSync?esc(syncAgoLabel()):"never")+' <span style="opacity:.7">(an export or a merge)</span></div>'+
+    '<div><b style="color:var(--ink)">Checklists:</b> '+S.cases.filter(isActive).length+' active, '+arch.length+' archived, '+canc.length+' cancelled</div>'+
+    '<div><b style="color:var(--ink)">Library:</b> '+S.template.length+' steps · '+S.recurring.length+' repeating</div>'+
+    '<p style="margin-top:14px">A backup includes your edited step library and settings, not just the checklists. Export on the same day each week and it becomes part of the routine.</p>'+
+    '</div></div>';
+  h+='<h2 class="sec">Sync reminder</h2><div class="card" style="padding:18px 20px;max-width:640px">'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+
+    '<button class="btn'+(S.multiDevice?'':' ghost')+'" data-act="multitoggle">'+(S.multiDevice?'Reminder is on':'Turn the reminder on')+'</button>'+
+    (S.multiDevice?'<span class="hint" style="margin:0">Remind me after</span><select id="syncDays" style="width:auto">'+
+      [1,2,3,7].map(function(n){ return '<option value="'+n+'"'+((S.syncDays||3)===n?' selected':'')+'>'+n+(n===1?' day':' days')+'</option>'; }).join("")+'</select>':'')+
+    '</div><div class="hint">Use this if Tracker is on more than one device. When it has been a while since you last exported or merged, This week shows a gentle reminder. It never blocks anything.</div></div>';
+  if(canc.length) h+=closedSection("Cancelled", canc, true);
+  if(arch.length) h+=closedSection("Archived", arch, false);
+  if(bulkCount()) h+='<div style="height:74px"></div>';
+  main.innerHTML=h;
+  var fi=document.getElementById("fileIn");
+  if(fi) fi.addEventListener("change",doImport);
+  var fr=document.getElementById("fileRep");
+  if(fr) fr.addEventListener("change",doImport);
+}
+
+function copyToClipboard(text,msg){
+  var ta=document.createElement("textarea");
+  ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); toast(msg||"Copied"); }
+  catch(x){ prompt("Copy this:",text); }
+  document.body.removeChild(ta);
+}
+
+var EOD_DEFAULT_TIME="15:00";
+function eodTime(){ return (S && S.eodTime) || ""; }
+function caseName(cid){ var c=S.cases.filter(function(x){return x.id===cid;})[0]; return c?c.name:null; }
+
+function eodReport(){
+  var t=isoD(today()), nw=nextWorkDay(today(),false), nwIso=isoD(nw);
+  var done=[], open={od:[],today:[],next:[]};
+  S.cases.forEach(function(c){
+    if(c.cancelled) return;
+    c.steps.forEach(function(st){
+      if(st.owner==="AUTO") return;
+      if(st.done){ if(st.doneAt===t) done.push({t:st.t, who:c.name}); return; }
+      if(c.archived || isBlocked(c,st)) return;
+      var d=st.due;
+      if(!d) return;
+      if(d<t) open.od.push({t:st.t, who:c.name, d:d});
+      else if(d===t) open.today.push({t:st.t, who:c.name});
+      else if(d<=nwIso) open.next.push({t:st.t, who:c.name, d:d});
+    });
+  });
+  (S.tasks||[]).forEach(function(x){
+    if(x.done){ if(x.doneAt===t) done.push({t:x.t, who:caseName(x.cid)}); return; }
+    var d=x.due||x.remind; if(!d) return;
+    if(d<t) open.od.push({t:x.t, who:caseName(x.cid), d:d});
+    else if(d===t) open.today.push({t:x.t, who:caseName(x.cid)});
+    else if(d<=nwIso) open.next.push({t:x.t, who:caseName(x.cid), d:d});
+  });
+  (S.recurring||[]).forEach(function(r){
+    if(r.freq==="daily") return;
+    if(r.lastDone===t) done.push({t:r.t, who:null, rec:true});
+    if(r.next<t) open.od.push({t:r.t, who:null, d:r.next, rec:true});
+    else if(r.next===t) open.today.push({t:r.t, who:null, rec:true});
+    else if(r.next<=nwIso) open.next.push({t:r.t, who:null, d:r.next, rec:true});
+  });
+  return {done:done, open:open, next:nw};
+}
+function eodItemText(x, withDue){
+  var who = x.who ? " \u2014 "+x.who : (x.rec ? " (repeating)" : "");
+  return x.t + who + (withDue && x.d ? " (planned for "+fmtD(parseD(x.d))+")" : "");
+}
+function eodSections(){
+  var R=eodReport(), secs=[];
+  secs.push({head:"Done today", sub:null,
+    items: R.done.length ? R.done.map(function(x){return eodItemText(x,false);}) : ["Nothing ticked off today. That is okay."]});
+  var any=R.open.od.length||R.open.today.length||R.open.next.length;
+  if(!any) secs.push({head:"Still open", sub:null, items:["Nothing waiting through "+fmtD(R.next)]});
+  var first=true;
+  function add(sub, list, withDue){
+    if(!list.length) return;
+    secs.push({head: first ? "Still open" : null, sub:sub, items:list.map(function(x){return eodItemText(x,withDue);})});
+    first=false;
+  }
+  add("Carried over", R.open.od, true);
+  add("Planned for today, still open", R.open.today, false);
+  add("Coming up "+fmtD(R.next), R.open.next, false);
+  return {title:"Day recap \u2014 "+fmtLong(today()), secs:secs};
+}
+function eodText(){
+  var E=eodSections(), out=[E.title];
+  E.secs.forEach(function(sec){
+    if(sec.head){ out.push(""); out.push(sec.head); }
+    if(sec.sub) out.push(sec.sub+":");
+    sec.items.forEach(function(t){ out.push("\u2022 "+t); });
+  });
+  return out.join("\n");
+}
+var EOD_FONT="Aptos, Calibri, Arial, sans-serif";
+function eodHTML(){
+  var E=eodSections();
+  var p='margin:0 0 6pt 0;', ul='margin:0 0 10pt 0;padding-left:22pt;';
+  var h='<div style="font-family:'+EOD_FONT+';font-size:11pt;">'+
+    '<p style="'+p+'"><b>'+esc(E.title)+'</b></p>';
+  E.secs.forEach(function(sec){
+    if(sec.head) h+='<p style="'+p+'margin-top:8pt;"><b>'+esc(sec.head)+'</b></p>';
+    if(sec.sub)  h+='<p style="'+p+'">'+esc(sec.sub)+'</p>';
+    h+='<ul style="'+ul+'">'+sec.items.map(function(t){ return '<li style="margin:0 0 2pt 0;">'+esc(t)+'</li>'; }).join("")+'</ul>';
+  });
+  return h+'</div>';
+}
+function copyRich(html, text, msg){
+  var ok=false;
+  function onCopy(e){
+    try{
+      e.clipboardData.setData("text/html", html);
+      e.clipboardData.setData("text/plain", text);
+      e.preventDefault(); ok=true;
+    }catch(x){}
+  }
+  document.addEventListener("copy", onCopy, true);
+  try{ document.execCommand("copy"); }catch(x){}
+  document.removeEventListener("copy", onCopy, true);
+  if(ok) toast(msg); else copyToClipboard(text, msg);
+}
+function eodModal(){
+  syncFromStorage();
+  var R=eodReport();
+  var n=R.open.od.length+R.open.today.length+R.open.next.length;
+  var body='<div class="q"><label class="f">'+R.done.length+' done today · '+n+' still open through '+esc(fmtD(R.next))+'</label>'+
+    '<div class="emprev rich">'+eodHTML()+'</div>'+
+    '<div class="hint">Copy it to send to someone, paste it into your notes, or just read it to see how the day went. Daily repeating tasks are left out. Nothing here is saved; open it again tomorrow and it starts over.</div></div>';
+  openModal("Day recap","", body, function(){
+    copyRich(eodHTML(), eodText(), "Copied \u2014 paste it anywhere");
+    S.eodDone=isoD(today()); S.eodSnooze=null; save();
+    alarmEl.classList.remove("on"); alarmShowing=null;
+    return true;
+  }, "", {save:"Copy the recap", close:"Close"});
+}
+function eodDue(){
+  if(!S || !eodTime() || !isWorkDay(today())) return false;
+  var t=isoD(today());
+  if(S.eodDone===t) return false;
+  var now=new Date();
+  if(S.eodSnooze && new Date(S.eodSnooze)>now) return false;
+  var hm=eodTime().split(":"), hh=parseInt(hm[0],10), mm=parseInt(hm[1],10);
+  var at=new Date(); at.setHours(isNaN(hh)?15:hh, isNaN(mm)?0:mm, 0, 0);
+  return at<=now ? at : false;
+}
+function eodAlarmHTML(at){
+  var R=eodReport();
+  return '<div class="alhd"><span class="aldot"></span><span class="alk">Evening check-in</span>'+
+      '<span class="alwhen">'+esc(lateness(at))+'</span></div>'+
+    '<div class="albd"><div class="alt">Look back at your day</div>'+
+      '<div class="almore">'+R.done.length+' done today · '+(R.open.od.length+R.open.today.length+R.open.next.length)+' still open</div></div>'+
+    '<div class="alft"><button class="alb go" data-act="eod">Open recap</button>'+
+      '<button class="alb" data-act="eoddismiss">Dismiss</button>'+
+      '<div class="alsz" style="margin-top:9px">Snooze</div>'+
+      SNOOZES.filter(function(z){return z.m<1440;}).map(function(z){
+        return '<button class="alb" data-act="eodsnooze" data-m="'+z.m+'">'+esc(z.l)+'</button>';
+      }).join("")+
+    '</div>';
+}
+
+var calMonth=null, calSel=null;
+var CAL_MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+function calItems(fromIso,toIso,noGhosts){
+  var out=[];
+  function inR(d){ return d && d>=fromIso && d<=toIso; }
+  S.cases.forEach(function(c){
+    if(!isActive(c)) return;
+    c.steps.forEach(function(st){
+      if(st.done || st.owner==="AUTO" || !inR(st.due)) return;
+      out.push({kind:"step", date:parseD(st.due), c:c, s:st, blocked:isBlocked(c,st)});
+    });
+  });
+  (S.tasks||[]).forEach(function(t){
+    var d=t.due||t.remind;
+    if(!t.done && inR(d)) out.push({kind:"task", date:parseD(d), t:t});
+  });
+  (S.recurring||[]).forEach(function(r){
+    if(inR(r.next)) out.push({kind:"recur", date:parseD(r.next), r:r});
+    if(noGhosts || r.freq==="daily" || r.next>toIso) return;
+    var g={freq:r.freq, next:r.next, anchor:r.anchor}, n=0, tI=isoD(today());
+    while(n++<400){
+      advance(g);
+      if(g.next>toIso) break;
+      if(g.next>=fromIso && g.next>=tI) out.push({kind:"recur", date:parseD(g.next), r:r, ghost:true});
+    }
+  });
+  out.sort(function(a,b){
+    if(a.date-b.date) return a.date-b.date;
+    if(!!a.ghost!==!!b.ghost) return a.ghost?1:-1;
+    return priRank(a)-priRank(b);
+  });
+  return out;
+}
+function calWho(i){
+  if(i.kind==="step") return i.c.name;
+  if(i.kind==="task" && i.t.cid) return caseName(i.t.cid)||"";
+  return "";
+}
+function calTitle(i){ return i.kind==="step" ? i.s.t : (i.kind==="task" ? i.t.t : i.r.t); }
+function laterHTML(flush){
+  var from=isoD(addDays(today(),8));
+  var n=calItems(from,"9999-12-31",true).filter(function(i){
+    return !(i.kind==="task" && i.t.remind && i.t.remind<from);
+  }).length;
+  if(!n) return "";
+  return '<div class="later"'+(flush?' style="margin-left:2px"':'')+'>'+n+' more dated after '+esc(fmtD(addDays(today(),7)))+
+    ' — <button class="linkbtn" data-act="calgo">open the Calendar</button></div>';
+}
+function renderCal(){
+  var t=today(), tIso=isoD(t);
+  if(!calMonth) calMonth=new Date(t.getFullYear(), t.getMonth(), 1);
+  if(!calSel) calSel=tIso;
+  var first=calMonth, last=new Date(first.getFullYear(), first.getMonth()+1, 0);
+  var start=addDays(first, -((first.getDay()+6)%7));
+  var end=addDays(last, (7-last.getDay())%7);
+  var items=calItems(isoD(start), isoD(end)), by={};
+  items.forEach(function(i){ var k=isoD(i.date); (by[k]=by[k]||[]).push(i); });
+
+  var h='<div class="eyebrow">The long view</div><h1>Calendar</h1>'+
+    '<p class="lede">Everything open with a date on it, any month. Click a day to see it in full and tick things off.</p>'+
+    '<div class="calhead">'+
+      '<button class="btn ghost sm" data-act="calprev" title="Previous month">&larr;</button>'+
+      '<h2>'+CAL_MONTHS[first.getMonth()]+' '+first.getFullYear()+'</h2>'+
+      '<button class="btn ghost sm" data-act="calnext" title="Next month">&rarr;</button>'+
+      '<button class="btn ghost sm" data-act="caltoday">Today</button>'+
+      '<span style="flex:1"></span>'+
+      '<button class="btn ghost sm" data-act="taddd" data-d="'+esc(calSel)+'">+ Add a task on '+esc(fmtD(parseD(calSel)))+'</button>'+
+    '</div><div class="calgrid">';
+  ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(function(d){ h+='<div class="cdow">'+d+'</div>'; });
+  for(var d=start; d<=end; d=addDays(d,1)){
+    var k=isoD(d), list=by[k]||[];
+    h+='<button class="cday'+(d.getMonth()!==first.getMonth()?" out":"")+(isWorkDay(d)?"":" off")+
+      (k===tIso?" today":"")+(k===calSel?" sel":"")+'" data-act="calday" data-d="'+k+'">'+
+      '<span class="cn">'+d.getDate()+'</span>';
+    list.slice(0,3).forEach(function(i){
+      var cls = i.ghost ? " ghost" : ((k<tIso && !i.blocked ? " od" : "")+(i.blocked?" dim":"")+(i.kind==="task"&&priOf(i.t)==="high"?" hi":""));
+      var who=calWho(i);
+      h+='<span class="cchip'+cls+'" title="'+esc(calTitle(i)+(who?" \u2014 "+who:""))+'">'+
+         '<span class="ct">'+esc(calTitle(i))+'</span>'+(who?'<span class="cw">'+esc(who)+'</span>':'')+'</span>';
+    });
+    if(list.length>3) h+='<span class="cmore">+'+(list.length-3)+' more</span>';
+    h+='</button>';
+  }
+  h+='</div>';
+
+  var sel=calItems(calSel,calSel), sd=parseD(calSel), od=calSel<tIso;
+  h+='<h2 class="sec">'+esc(fmtLong(sd))+' <span class="hint" style="font-weight:400">'+esc(od ? daysBetween(sd,today())+"d ago" : relD(sd))+
+     (isWorkDay(sd)?"":" · a day off")+'</span></h2><div class="calday">';
+  if(!sel.length) h+='<div class="card empty" style="padding:22px 20px"><b>Nothing dated this day.</b></div>';
+  sel.forEach(function(i){ h+=weekRowHTML(i, od && !i.ghost && !i.blocked); });
+  h+='</div>';
+  main.innerHTML=h;
+}
+
+var DONE_DAYS=30, DONE_LOG_MAX=600;
+function pruneDone(){
+  if(!S) return 0;
+  var cut=isoD(addDays(today(),-DONE_DAYS)), n=0;
+  if(S.tasks){
+    var keepT=S.tasks.filter(function(t){
+      if(!t.done) return true;
+      if(t.cid && (S.cases||[]).some(function(c){return c.id===t.cid;})) return true;
+      return (t.doneAt||t.created||"")>=cut;
+    });
+    n+=S.tasks.length-keepT.length; S.tasks=keepT;
+  }
+  if(S.doneLog){
+    var keepL=S.doneLog.filter(function(e){ return (e.at||"")>=cut; });
+    n+=S.doneLog.length-keepL.length; S.doneLog=keepL;
+  }
+  if(n) S.donePruned={at:isoD(today()), n:n};
+  return n;
+}
+function logRecur(r, prev){
+  if(!S.doneLog) S.doneLog=[];
+  S.doneLog.push({id:"d"+uid(), rid:r.id, t:r.t, freq:r.freq, at:isoD(today()), prev:prev, after:r.next});
+  if(S.doneLog.length>DONE_LOG_MAX) S.doneLog=S.doneLog.slice(S.doneLog.length-DONE_LOG_MAX);
+}
+function recurOf(rid){ return (S.recurring||[]).filter(function(x){return x.id===rid;})[0]||null; }
+function recurUndoable(e){
+  var r=recurOf(e.rid); if(!r || !e.prev) return false;
+  var mine=(S.doneLog||[]).filter(function(x){return x.rid===e.rid;});
+  return mine[mine.length-1]===e && r.next===e.after;
+}
+function doneItems(){
+  var cut=isoD(addDays(today(),-DONE_DAYS)), out=[];
+  function keep(at){ return at && at>=cut; }
+  S.cases.forEach(function(c){
+    c.steps.forEach(function(st){
+      if(!st.done || st.owner==="AUTO" || !keep(st.doneAt)) return;
+      out.push({kind:"step", at:st.doneAt||"", t:st.t, c:c, s:st, undo:isActive(c),
+        why: c.cancelled ? "checklist cancelled" : (c.archived ? "checklist archived" : "")});
+    });
+  });
+  (S.tasks||[]).forEach(function(t){
+    if(!t.done || !keep(t.doneAt)) return;
+    out.push({kind:"task", at:t.doneAt||"", t:t.t, task:t, c:(t.cid ? S.cases.filter(function(x){return x.id===t.cid;})[0] : null), undo:true, why:""});
+  });
+  (S.doneLog||[]).forEach(function(e){
+    if(!keep(e.at)) return;
+    var r=recurOf(e.rid), u=recurUndoable(e);
+    out.push({kind:"recur", at:e.at, t:(r?r.t:e.t), e:e, freq:(r?r.freq:e.freq), undo:u,
+      why: u ? "" : (r ? "ticked again since" : "no longer on the list")});
+  });
+  var i=0; out.forEach(function(x){ x._n=i++; });
+  out.sort(function(a,b){
+    if(a.at!==b.at) return a.at<b.at ? 1 : -1;
+    if(a.kind==="recur" && b.kind==="recur") return b._n-a._n;
+    return a._n-b._n;
+  });
+  return out;
+}
+function doneDayLabel(iso){
+  if(!iso) return "No date recorded";
+  var d=parseD(iso), n=daysBetween(d,today());
+  return n===0 ? "Today" : (n===1 ? "Yesterday" : fmtLong(d));
+}
+function doneRowHTML(x){
+  var meta, btn;
+  if(x.kind==="step"){
+    meta='<button class="linkbtn" data-act="open" data-cid="'+esc(x.c.id)+'">'+esc(x.c.name)+'</button>';
+    btn='<button class="btn ghost sm" data-act="unstep" data-cid="'+esc(x.c.id)+'" data-sid="'+esc(x.s.id)+'">Put back</button>';
+  }else if(x.kind==="task"){
+    meta=x.c ? '<button class="linkbtn" data-act="open" data-cid="'+esc(x.c.id)+'">'+esc(x.c.name)+'</button>'
+             : '<span class="free">one-off</span>';
+    btn='<button class="btn ghost sm" data-act="untask" data-id="'+esc(x.task.id)+'">Put back</button>';
+  }else{
+    meta='<span class="free">repeating · '+esc(x.freq||"")+'</span>';
+    btn='<button class="btn ghost sm" data-act="unrec" data-id="'+esc(x.e.id)+'">Put back</button>';
+  }
+  return '<div class="rr donerow"><span class="tick on"></span>'+
+    '<div class="sbody"><div class="s1">'+esc(x.t)+'</div><div class="smeta">'+meta+'</div></div>'+
+    (x.undo ? btn : '<span class="why">'+esc(x.why)+'</span>')+'</div>';
+}
+function renderDone(){
+  pruneDone();
+  var items=doneItems();
+  var h='<button class="btn ghost sm" data-act="doneback">&larr; This week</button>'+
+    '<div class="eyebrow" style="margin-top:14px">Ticked off</div><h1>Wins</h1>'+
+    '<p class="lede">Everything you have ticked off in the last '+DONE_DAYS+' days, newest first. '+
+    '<b>Put back</b> unticks it and returns it to where it was.</p>';
+  if(!items.length){
+    h+='<div class="card empty"><b>Nothing ticked off in the last '+DONE_DAYS+' days.</b>'+
+       'Whatever you tick off on This week or in a checklist collects here, so you can see what you have done.</div>';
+  }else{
+    var g={}, order=[];
+    items.forEach(function(x){ if(!g[x.at]){ g[x.at]=[]; order.push(x.at); } g[x.at].push(x); });
+    order.forEach(function(k){
+      h+='<h2 class="sec">'+esc(doneDayLabel(k))+' <span class="hint tnum" style="font-weight:400">'+g[k].length+'</span></h2>'+
+         '<div class="card">'+g[k].map(doneRowHTML).join("")+'</div>';
+    });
+  }
+  h+='<div class="donefoot"><span class="hint" style="margin:0">After '+DONE_DAYS+' days, finished one-off tasks and repeating ticks are deleted. '+
+     'Steps and tasks on a checklist stay on the checklist.'+
+     (S.donePruned ? ' Last clear-out: '+S.donePruned.n+' removed on '+esc(fmtD(parseD(S.donePruned.at)))+'.' : '')+
+     '</span></div>';
+  main.innerHTML=h;
+}
+function putBackStep(cid,sid){
+  var c=S.cases.filter(function(x){return x.id===cid;})[0]; if(!c || !isActive(c)) return;
+  var s=findStep(c,sid); if(!s || !s.done) return;
+  toggleStep(cid,sid);
+  toast("Back on the checklist — "+c.name);
+}
+function putBackTask(id){
+  var t=(S.tasks||[]).filter(function(x){return x.id===id;})[0]; if(!t || !t.done) return;
+  toggleTask(id);
+  toast(t.cid && caseName(t.cid) ? "Back on "+caseName(t.cid) : ((t.due||t.remind) ? "Back on This week" : "Back under No date on This week"));
+}
+function putBackRecur(id){
+  var e=(S.doneLog||[]).filter(function(x){return x.id===id;})[0]; if(!e || !recurUndoable(e)) return;
+  var r=recurOf(e.rid);
+  r.next=e.prev.next;
+  if(e.prev.anchor) r.anchor=e.prev.anchor; else delete r.anchor;
+  if(e.prev.lastDone) r.lastDone=e.prev.lastDone; else delete r.lastDone;
+  S.doneLog=S.doneLog.filter(function(x){return x.id!==id;});
+  save(); render();
+  toast("Back on "+fmtD(parseD(r.next)));
+}
+
+function tsteps(t){ return (t && t.steps) ? t.steps : []; }
+function tsDone(t){ return tsteps(t).filter(function(x){return x.done;}).length; }
+
+function tsListHTML(t){
+  var st=tsteps(t); if(!st.length) return "";
+  return '<div class="tsl">'+st.map(function(x){
+    return '<div class="tsi'+(x.done?" on":"")+'">'+
+      '<button class="tick xs'+(x.done?" on":"")+'" data-act="tstog" data-id="'+esc(t.id)+'" data-sid="'+esc(x.id)+'"></button>'+
+      '<span class="lbl">'+esc(x.t)+'</span></div>';
+  }).join("")+'</div>';
+}
+function tsCountHTML(t){
+  var st=tsteps(t); if(!st.length) return "";
+  var d=tsDone(t);
+  return '<span class="tsn'+(d===st.length?" all":"")+'">'+d+'/'+st.length+'</span>';
+}
+
+function taskEdit(id,cid,due){
+  var isNew=!id;
+  var t = isNew ? {id:"t"+uid(), t:"", cid:cid||null, pri:"normal", due:due||isoD(today()), remind:null, remindTime:null,
+                   note:"", steps:[], remindDone:false, snoozeUntil:null,
+                   done:false, doneAt:null, created:isoD(today())}
+                : S.tasks.filter(function(x){return x.id===id;})[0];
+  if(!t) return;
+  var cases=S.cases.filter(isActive).map(function(c){return {v:c.id,l:c.name};});
+  if(t.cid && !cases.some(function(o){return o.v===t.cid;})){
+    var own=S.cases.filter(function(c){return c.id===t.cid;})[0];
+    if(own) cases.unshift({v:own.id, l:own.name+" ("+caseState(own)+")"});
+  }
+  var body='<div class="q"><label class="f">What has to happen</label>'+
+    '<input type="text" id="fT" value="'+esc(t.t)+'" placeholder="What needs doing"></div>'+
+    '<div class="q"><label class="f">Priority</label>'+
+      chips("tpri",[{v:"high",l:"High",cls:"p-high"},{v:"normal",l:"Normal",cls:"p-normal"},{v:"low",l:"Low",cls:"p-low"}],[priOf(t)],null,true)+'</div>'+
+    '<div class="q grid2">'+
+      '<div><label class="f">Due</label><input type="date" id="fDue" value="'+esc(t.due||"")+'"></div>'+
+      '<div><label class="f">Reminder</label>'+
+        '<div style="display:flex;gap:8px">'+
+          '<input type="date" id="fRem" style="flex:1;min-width:0" value="'+esc(t.remind||"")+'">'+
+          '<input type="time" id="fRemT" style="width:136px;flex:0 0 auto" value="'+esc(t.remindTime||"")+'">'+
+        '</div></div>'+
+    '</div>'+
+    '<div class="hint">Due is set to today because that is what most of these are. Change it, or clear it and the task drops into the no-date group at the bottom of This week instead.<br>'+
+    'Set a <b>reminder</b> and this window pops up at that time, to dismiss or snooze. No time given means '+ALARM_DEFAULT_TIME+'. It also starts showing in This week from that date.<br>'+
+    '<b>It can only ring while this tab is open.</b> If the browser is shut when it comes due, it fires the moment you open the app again and tells you how long ago it was — nothing is lost, but nothing reaches you either. For anything where missing it costs money, keep a calendar reminder as the one that will actually save you.</div>'+
+    '<div class="q" style="margin-top:18px"><label class="f">Notes</label>'+
+      '<textarea id="fTN" style="min-height:64px" placeholder="Anything you will want in front of you when you pick this up: who to ask, what you already tried, the reference number">'+esc(t.note||"")+'</textarea></div>'+
+    '<div class="q"><label class="f">Steps</label>'+
+      '<div class="tsed" id="tsed">'+tsteps(t).map(tsRowHTML).join("")+'</div>'+
+      '<button type="button" class="linkbtn" data-act="tsadd" style="margin-top:9px">+ add a step</button>'+
+      '<div class="hint">Optional. Break the task into things you can tick off one at a time. The count turns green when they are all done; ticking the task itself is what closes it. Leave a line blank and it is dropped.</div></div>'+
+    (cases.length?'<div class="q"><label class="f">About a checklist</label>'+
+      chips("tcase",cases,t.cid?[t.cid]:[],"Nothing in particular",true)+
+      '<div class="hint">Attach it to a checklist and it also shows on that checklist. Leave it off for anything that belongs to no checklist.</div></div>':'');
+  openModal(isNew?"Add a task":"Edit task", isNew?"":"", body, function(){
+    var v=mv("fT").trim(); if(!v){ toast("Give the task a name"); return false; }
+    t.t=v;
+    var tc=readChips("tcase");
+    t.cid = (tc==="*"||!tc.length) ? null : tc[0];
+    var pr=readChips("tpri");
+    t.pri = (pr==="*"||!pr.length) ? "normal" : pr[0];
+    t.note = mv("fTN").trim();
+    var st=[];
+    modalEl.querySelectorAll("#tsed .tsrow").forEach(function(r){
+      var v=r.querySelector("input").value.trim(); if(!v) return;
+      st.push({id:r.dataset.sid, t:v, done:r.dataset.done==="1"});
+    });
+    t.steps=st;
+    t.due = mv("fDue")||null;
+    var oldRemind=t.remind, oldTime=t.remindTime;
+    t.remind = mv("fRem")||null;
+    t.remindTime = t.remind ? (mv("fRemT")||ALARM_DEFAULT_TIME) : null;
+    if(t.remind && t.due && t.remind>t.due) t.remind=t.due;
+    if(t.remind!==oldRemind || t.remindTime!==oldTime){ t.remindDone=false; t.snoozeUntil=null; }
+    if(isNew) S.tasks.push(t);
+    save(); render(); toast(isNew?"Task added":"Task updated");
+    return true;
+  });
+}
+function tsRowHTML(x){
+  return '<div class="tsrow" data-sid="'+esc(x.id)+'" data-done="'+(x.done?"1":"0")+'">'+
+    '<div class="tsord">'+
+      '<button type="button" data-act="tsmove" data-dir="-1" title="Move up">&#9650;</button>'+
+      '<button type="button" data-act="tsmove" data-dir="1" title="Move down">&#9660;</button>'+
+    '</div>'+
+    '<input type="text" value="'+esc(x.t)+'" placeholder="What has to happen first">'+
+    '<button type="button" class="tsx" data-act="tsdel" title="Remove">\u00d7</button></div>';
+}
+function tsRefresh(){
+  var box=document.getElementById("tsed"); if(!box) return;
+  var rows=box.querySelectorAll(".tsrow");
+  rows.forEach(function(r,i){
+    var b=r.querySelectorAll('[data-act="tsmove"]');
+    if(b[0]) b[0].disabled = (i===0);
+    if(b[1]) b[1].disabled = (i===rows.length-1);
+  });
+}
+
+function toggleTaskStep(id,sid){
+  var t=(S.tasks||[]).filter(function(x){return x.id===id;})[0]; if(!t) return;
+  var x=tsteps(t).filter(function(y){return y.id===sid;})[0]; if(!x) return;
+  x.done=!x.done;
+  save(); render();
+}
+
+var ALARM_DEFAULT_TIME="09:00";
+var SNOOZES=[{m:5,l:"5 min"},{m:15,l:"15 min"},{m:30,l:"30 min"},{m:60,l:"1 hour"},{m:1440,l:"Tomorrow"}];
+
+function remindAt(t){
+  if(!t || !t.remind) return null;
+  var d=parseD(t.remind); if(!d) return null;
+  var hm=(t.remindTime||ALARM_DEFAULT_TIME).split(":");
+  d.setHours(parseInt(hm[0],10)||0, parseInt(hm[1],10)||0, 0, 0);
+  return d;
+}
+function alarmsDue(){
+  var now=new Date();
+  return (S.tasks||[]).filter(function(t){
+    if(t.done || t.remindDone) return false;
+    if(t.snoozeUntil && new Date(t.snoozeUntil)>now) return false;
+    var at=remindAt(t);
+    return at && at<=now;
+  }).sort(function(a,b){ return remindAt(a)-remindAt(b); });
+}
+function lateness(at){
+  var mins=Math.round((new Date()-at)/60000);
+  if(mins<2) return "now";
+  if(mins<60) return mins+" min ago";
+  var h=Math.round(mins/60);
+  if(h<24) return h+" hour"+(h>1?"s":"")+" ago";
+  var d=Math.round(h/24);
+  return d+" day"+(d>1?"s":"")+" ago";
+}
+
+var alarmEl=document.getElementById("alarm"), alarmShowing=null;
+function renderAlarm(){
+  var due=alarmsDue();
+  if(!due.length){
+    var eodAt=eodDue();
+    if(eodAt){
+      if(alarmShowing==="__eod" && alarmEl.classList.contains("on")) return;
+      alarmShowing="__eod"; alarmEl.innerHTML=eodAlarmHTML(eodAt); alarmEl.classList.add("on"); return;
+    }
+    alarmEl.classList.remove("on"); alarmEl.innerHTML=""; alarmShowing=null; return;
+  }
+  var t=due[0];
+  if(alarmShowing===t.id && alarmEl.classList.contains("on")) return;
+  alarmShowing=t.id;
+  var c=t.cid ? S.cases.filter(function(x){return x.id===t.cid;})[0] : null;
+  var st=tsteps(t), left=st.length-tsDone(t);
+  alarmEl.innerHTML=
+    '<div class="alhd"><span class="aldot"></span><span class="alk">Reminder</span>'+
+      '<span class="alwhen">'+esc(lateness(remindAt(t)))+'</span></div>'+
+    '<div class="albd"><div class="alt">'+esc(t.t)+'</div>'+
+      (t.note?'<div class="alsub">'+esc(t.note)+'</div>':'')+
+      (c?'<div class="almore">'+esc(c.name)+' \u00b7 '+esc(c.unit)+'</div>':'')+
+      (st.length?'<div class="almore">'+(left?left+' of '+st.length+' steps left':'all '+st.length+' steps done')+'</div>':'')+
+      (due.length>1?'<div class="almore">and '+(due.length-1)+' more waiting</div>':'')+
+    '</div>'+
+    '<div class="alft"><button class="alb go" data-act="aldone" data-id="'+esc(t.id)+'">Mark it done</button>'+
+      '<button class="alb" data-act="aldismiss" data-id="'+esc(t.id)+'">Dismiss</button>'+
+      '<button class="alb" data-act="alopen" data-id="'+esc(t.id)+'">Open it</button>'+
+      '<div class="alsz" style="margin-top:9px">Snooze</div>'+
+      SNOOZES.map(function(z){
+        return '<button class="alb" data-act="alsnooze" data-id="'+esc(t.id)+'" data-m="'+z.m+'">'+esc(z.l)+'</button>';
+      }).join("")+
+    '</div>';
+  alarmEl.classList.add("on");
+}
+function snoozeTask(id,mins){
+  var t=(S.tasks||[]).filter(function(x){return x.id===id;})[0]; if(!t) return;
+  var until=new Date();
+  if(mins>=1440){ until.setDate(until.getDate()+1); until.setHours(9,0,0,0); }
+  else until=new Date(until.getTime()+mins*60000);
+  t.snoozeUntil=until.toISOString();
+  save(); alarmEl.classList.remove("on"); alarmShowing=null; renderAlarm();
+  toast("Snoozed until "+fmtTime(until));
+}
+function dismissAlarm(id){
+  var t=(S.tasks||[]).filter(function(x){return x.id===id;})[0]; if(!t) return;
+  t.remindDone=true; t.snoozeUntil=null;
+  save(); alarmEl.classList.remove("on"); alarmShowing=null; renderAlarm();
+}
+function fmtTime(d){
+  var h=d.getHours(), m=d.getMinutes();
+  return (h<10?"0":"")+h+":"+(m<10?"0":"")+m;
+}
+setInterval(function(){ syncFromStorage(); renderAlarm(); }, 20000);
+try{
+  window.addEventListener("storage", function(e){ if(e.key===KEY) syncFromStorage(); });
+  window.addEventListener("focus", syncFromStorage);
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden) syncFromStorage(); });
+}catch(x){}
+
+function delTask(id){
+  var t=S.tasks.filter(function(x){return x.id===id;})[0]; if(!t) return;
+  if(!confirm("Delete \u201c"+t.t+"\u201d?")) return;
+  S.tasks=S.tasks.filter(function(x){return x.id!==id;});
+  save(); render();
+}
+function toggleTask(id){
+  var t=S.tasks.filter(function(x){return x.id===id;})[0]; if(!t) return;
+  t.done=!t.done; t.doneAt=t.done?isoD(today()):null; save(); render();
+}
+
+var veil=document.getElementById("veil"), modalEl=document.getElementById("modal"), modalSave=null, modalClean="";
+function openModal(title,sub,bodyHTML,onSave,extraFoot,labels){
+  labels=labels||{};
+  modalEl.innerHTML='<div class="mhead"><h3>'+esc(title)+'</h3>'+(sub?'<p>'+esc(sub)+'</p>':'')+'</div>'+
+    '<div class="mbody">'+bodyHTML+'</div>'+
+    '<div class="mfoot"><button class="btn" data-act="msave">'+esc(labels.save||"Save")+'</button>'+
+    '<button class="btn ghost" data-act="mclose">'+esc(labels.close||"Cancel")+'</button><span class="sp"></span>'+(extraFoot||'')+'</div>';
+  modalSave=onSave; veil.classList.add("on");
+  tsRefresh();
+  modalClean=modalState();
+  var f=modalEl.querySelector("input,textarea,select"); if(f) f.focus();
+}
+function closeModal(){ veil.classList.remove("on"); modalEl.innerHTML=""; modalSave=null; modalClean="";
+  if(pendingExternal) syncFromStorage();
+}
+
+function modalState(){
+  var out=[];
+  modalEl.querySelectorAll("input,textarea,select").forEach(function(e){
+    out.push((e.type==="checkbox"||e.type==="radio") ? (e.checked?"1":"0") : e.value);
+  });
+  modalEl.querySelectorAll(".chip").forEach(function(b){
+    out.push(b.dataset.val+(b.classList.contains("on")?"1":"0"));
+  });
+  return out.join("\u0000");
+}
+function modalDirty(){ return veil.classList.contains("on") && modalState()!==modalClean; }
+function tryCloseModal(how){
+  if(!modalDirty()){ closeModal(); return; }
+  if(how==="outside"){
+    modalEl.classList.remove("shake");
+    void modalEl.offsetWidth;
+    modalEl.classList.add("shake");
+    toast("Nothing lost \u2014 Save keeps it, Cancel discards it");
+    return;
+  }
+  if(confirm("Discard what you have typed?")) closeModal();
+}
+function mv(id){ var e=document.getElementById(id); return e? e.value : ""; }
+function chips(name,list,selected,allLabel,single){
+  var h='<div class="opts"'+(single?' data-single="1"':'')+'>';
+  if(allLabel) h+='<button type="button" class="opt sm chip '+(selected==="*"?"on":"")+'" data-chip="'+name+'" data-val="*">'+esc(allLabel)+'</button>';
+  list.forEach(function(o){
+    var val=o.v!==undefined?o.v:o, lab=o.l!==undefined?o.l:o;
+    var on = selected!=="*" && selected && selected.indexOf(val)!==-1;
+    h+='<button type="button" class="opt sm chip '+(o.cls?esc(o.cls)+' ':'')+(on?"on":"")+'" data-chip="'+name+'" data-val="'+esc(val)+'">'+esc(lab)+'</button>';
+  });
+  return h+'</div>';
+}
+function readChips(name){
+  var all=modalEl.querySelector('[data-chip="'+name+'"][data-val="*"]');
+  if(all && all.classList.contains("on")) return "*";
+  var out=[];
+  modalEl.querySelectorAll('[data-chip="'+name+'"].on').forEach(function(b){
+    if(b.dataset.val!=="*") out.push(b.dataset.val);
+  });
+  return out;
+}
+modalEl.addEventListener("click",function(e){
+  var sm=e.target.closest('[data-act="tsmove"]');
+  if(sm){
+    var row=sm.closest(".tsrow"), dir=parseInt(sm.dataset.dir,10);
+    if(dir<0 && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling);
+    if(dir>0 && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row);
+    tsRefresh();
+    var again=row.querySelectorAll('[data-act="tsmove"]')[dir<0?0:1];
+    if(again && !again.disabled) again.focus();
+    return;
+  }
+  var sx=e.target.closest('[data-act="tsdel"]');
+  if(sx){ sx.closest(".tsrow").remove(); tsRefresh(); return; }
+  var sa=e.target.closest('[data-act="tsadd"]');
+  if(sa){
+    var box=document.getElementById("tsed"); if(!box) return;
+    box.insertAdjacentHTML("beforeend", tsRowHTML({id:"s"+uid(), t:"", done:false}));
+    box.lastElementChild.querySelector("input").focus();
+    tsRefresh();
+    return;
+  }
+  var c=e.target.closest(".chip"); if(!c) return;
+  var name=c.dataset.chip;
+  var grp=c.closest(".opts"), single=grp && grp.dataset.single==="1";
+  if(single){
+    modalEl.querySelectorAll('[data-chip="'+name+'"]').forEach(function(b){ b.classList.remove("on"); });
+    c.classList.add("on");
+    return;
+  }
+  if(c.dataset.val==="*"){
+    modalEl.querySelectorAll('[data-chip="'+name+'"]').forEach(function(b){ b.classList.remove("on"); });
+    c.classList.add("on");
+  } else {
+    var all=modalEl.querySelector('[data-chip="'+name+'"][data-val="*"]');
+    if(all) all.classList.remove("on");
+    c.classList.toggle("on");
+  }
+});
+veil.addEventListener("click",function(e){ if(e.target===veil) tryCloseModal("outside"); });
+document.addEventListener("keydown",function(e){ if(e.key==="Escape" && veil.classList.contains("on")) tryCloseModal("esc"); });
+
+function timingHTML(s,P){
+  var asap=!!s.asap, off=s.off||0;
+  var ap=(P||proc("")).anchorPhrase;
+  return '<div class="q"><label class="f">When is it due</label>'+
+    '<div class="opts" style="margin-bottom:9px">'+
+      '<button type="button" class="opt sm chip '+(!asap?"on":"")+'" data-chip="timing" data-val="rel">Relative to the '+esc(ap)+'</button>'+
+      '<button type="button" class="opt sm chip '+(asap?"on":"")+'" data-chip="timing" data-val="asap">As soon as the checklist opens</button>'+
+    '</div>'+
+    '<div class="grid2"><div><label class="f">Days</label>'+
+      '<input type="number" id="fOffN" value="'+Math.abs(off)+'" min="0" max="365"></div>'+
+      '<div><label class="f">Before or after</label><select id="fOffDir">'+
+      '<option value="-1" '+(off<=0?"selected":"")+'>before the '+esc(ap)+'</option>'+
+      '<option value="1" '+(off>0?"selected":"")+'>after the '+esc(ap)+'</option></select></div></div>'+
+    '<div class="hint">Set days to 0 for the '+esc(ap)+' itself. Ignored if you picked &ldquo;as soon as the checklist opens&rdquo;, which means the day you create the checklist \u2014 or your next planned day if that day is a day off.</div></div>';
+}
+function readTiming(){
+  var t=readChips("timing");
+  if(t!=="*" && t.indexOf("asap")!==-1) return {asap:true, off:0};
+  var n=Math.abs(parseInt(mv("fOffN"),10)||0);
+  var dir=parseInt(mv("fOffDir"),10)||-1;
+  return {asap:false, off:n*dir};
+}
+
+function libEdit(id){
+  var isNew=!id;
+  if(isNew && !PROCESSES.length){ toast("Create a goal first \u2014 Settings"); return; }
+  var s = isNew ? {id:"s"+uid(), process:PROCESSES[0].id, t:"", d:"", owner:"HRA", units:"*", inst:"*", off:-7, needs:[], when:[]}
+                : S.template.filter(function(x){return x.id===id;})[0];
+  if(!s) return;
+  var P=proc(stepProcess(s));
+  var others=S.template.filter(function(x){ return x.id!==s.id && stepProcess(x)===P.id; })
+                       .map(function(x){return {v:x.id,l:x.t};});
+  var flags=flagsFor(P.id);
+  var body=
+    (multiProcess()?'<div class="q"><label class="f">Which goal</label>'+
+      chips("process",PROCESSES.map(function(x){return {v:x.id,l:x.label};}),[P.id],null,true)+
+      '<div class="hint">Changing this clears the prerequisites, which belong to the old goal.</div></div>':'')+
+    '<div class="q"><label class="f">Step</label><input type="text" id="fT" value="'+esc(s.t)+'" placeholder="What has to happen"></div>'+
+    '<div class="q"><label class="f">Detail</label><textarea id="fD" placeholder="Where, what you need, anything easy to forget">'+esc(s.d)+'</textarea></div>'+
+    '<div class="q"><label class="f">Phase</label>'+
+      '<input type="text" id="fPh" value="'+esc(s.phase||"")+'" placeholder="Leave blank unless the goal has distinct stages" list="phaseList">'+
+      '<datalist id="phaseList">'+
+        [].concat.apply([],PROCESSES.map(function(P){
+          var seen={},o=[];
+          S.template.filter(function(x){return stepProcess(x)===P.id && x.phase;}).forEach(function(x){
+            if(!seen[x.phase]){seen[x.phase]=1;o.push('<option value="'+esc(x.phase)+'">');} });
+          return o; })).join("")+
+      '</datalist>'+
+      '<div class="hint">Steps sharing a phase are grouped under a heading with their own progress. For example \u201cBefore\u201d and \u201cAfter\u201d.</div></div>'+
+    '<div class="q"><label class="f">Whose step is it</label>'+chips("owner",[{v:"HRA",l:"Yours"},{v:"HRAM",l:"Someone else"},{v:"AUTO",l:"Automatic"}],[s.owner],null,true)+'</div>'+
+    (asksGroup(P)?'<div class="q"><label class="f">Category</label>'+chips("inst",S.groups.map(function(g){return {v:g,l:g+" only"};}),s.inst==="*"?"*":[s.inst],"All categories",true)+'</div>':'')+
+    (asksUnit(P)?'<div class="q"><label class="f">Units</label>'+chips("units",S.units,s.units,"All units")+'</div>':'')+
+    (flags.length?'<div class="q"><label class="f">Only when</label>'+chips("when",flags.map(function(f){return {v:f.k,l:f.label};}),s.when||[],null)+
+      '<div class="hint">Leave all off to include the step every time.</div></div>':'')+
+    timingHTML(s,P)+
+    '<div class="q"><label class="f">Cannot start until these are done</label>'+chips("needs",others,s.needs||[],null)+
+      '<div class="hint">Blocked steps grey out and stay off This week until their prerequisite is ticked.</div></div>';
+  openModal(isNew?"Add a step to the library":"Edit step", isNew?"New checklists will include it from now on.":"Checklists already running keep their current copy.", body, function(){
+    var t=mv("fT").trim(); if(!t){ toast("Give the step a name"); return false; }
+    var own=readChips("owner"); var inst=readChips("inst");
+    var tm=readTiming();
+    if(multiProcess()){
+      var pr=readChips("process");
+      var newPid=(pr==="*"||!pr.length)?P.id:pr[0];
+      if(newPid!==stepProcess(s)){ s.process=newPid; s.needs=[]; }
+    }
+    s.t=t; s.d=mv("fD");
+    s.phase=mv("fPh").trim()||null;
+    s.owner=(own==="*"||!own.length)?"HRA":own[0];
+    if(asksGroup(P)){ s.inst=(inst==="*"||!inst.length)?"*":inst[0]; } else { s.inst="*"; }
+    if(asksUnit(P)){
+      s.units=readChips("units");
+      if(s.units!=="*" && !s.units.length) s.units="*";
+    } else { s.units="*"; }
+    if(flags.length){ var w=readChips("when"); s.when=(w==="*")?[]:w; } else { s.when=[]; }
+    if(stepProcess(s)===P.id){ var nd=readChips("needs"); s.needs=(nd==="*")?[]:nd; }
+    s.asap=tm.asap; s.off=tm.off;
+    if(isNew) S.template.push(s);
+    save(); render(); toast(isNew?"Step added to the library":"Library updated");
+    return true;
+  });
+}
+
+function caseStepEdit(cid,sid){
+  var c=S.cases.filter(function(x){return x.id===cid;})[0]; if(!c) return;
+  var isNew=!sid;
+  var s = isNew ? {id:"s"+uid(), t:"", d:"", owner:"HRA", needs:[], due:isoD(workday(addDays(today(),3))), done:false, doneAt:null, note:""}
+                : findStep(c,sid);
+  if(!s) return;
+  var others=c.steps.filter(function(x){return x.id!==s.id;}).map(function(x){return {v:x.id,l:x.t};});
+  var body=
+    '<div class="q"><label class="f">Step</label><input type="text" id="fT" value="'+esc(s.t)+'"></div>'+
+    '<div class="q"><label class="f">Detail</label><textarea id="fD">'+esc(s.d||"")+'</textarea></div>'+
+    '<div class="q grid2"><div><label class="f">Due date</label><input type="date" id="fDue" value="'+esc(s.due)+'"></div>'+
+    '<div><label class="f">Whose step</label>'+chips("owner",[{v:"HRA",l:"Yours"},{v:"HRAM",l:"Someone else"},{v:"AUTO",l:"Automatic"}],[s.owner||"HRA"],null,true)+'</div></div>'+
+    '<div class="q"><label class="f">Cannot start until these are done</label>'+chips("needs",others,s.needs||[],null)+'</div>'+
+    '<div class="q"><label class="f">Note</label><textarea id="fN" style="min-height:52px">'+esc(s.note||"")+'</textarea></div>'+
+    '<div class="hint">This changes only '+esc(c.name)+'. To change it for every future checklist, edit the Step library.</div>';
+  openModal(isNew?"Add a step":"Edit step", esc(c.name), body, function(){
+    var t=mv("fT").trim(); if(!t){ toast("Give the step a name"); return false; }
+    var own=readChips("owner"), nd=readChips("needs");
+    s.t=t; s.d=mv("fD"); s.due=mv("fDue")||s.due; s.note=mv("fN");
+    s.owner=(own==="*"||!own.length)?"HRA":own[0];
+    s.needs=(nd==="*")?[]:nd;
+    if(isNew) c.steps.push(s);
+    save(); render(); toast(isNew?"Step added":"Step updated");
+    return true;
+  });
+}
+
+function notesEdit(){
+  var c=S.cases.filter(function(x){return x.id===openCase;})[0]; if(!c) return;
+  var body='<div class="q"><label class="f">Notes</label>'+
+    '<textarea id="fN" style="min-height:150px" placeholder="Who is away, what is unusual, what someone asked for">'+esc(c.notes||"")+'</textarea>'+
+    '<div class="hint">Sits at the top of the checklist. This is for THIS checklist — for something true of every checklist of this kind, put it in the step detail in the Step library instead.</div></div>';
+  openModal("Notes", c.name, body, function(){
+    c.notes=mv("fN").trim(); save(); render(); toast("Notes saved");
+    return true;
+  });
+}
+
+function caseEdit(){
+  var c=S.cases.filter(function(x){return x.id===openCase;})[0]; if(!c) return;
+  var P=proc(caseProcess(c));
+  var body='<div class="q grid2"><div><label class="f">'+esc(P.subjectLabel)+'</label><input type="text" id="fN" value="'+esc(c.name)+'"></div>'+
+    '<div><label class="f">'+esc(P.anchorLabel)+'</label><input type="date" id="fS" value="'+esc(c.start)+'"></div></div>'+
+    (asksGroup(P)?'<div class="q"><label class="f">Category</label>'+chips("inst",S.groups,[c.inst],null,true)+'</div>':'')+
+    (asksUnit(P)?'<div class="q"><label class="f">Unit</label>'+chips("unit",S.units,[c.unit],null,true)+'</div>':'')+
+    '<div class="hint">Changing the '+esc(P.anchorPhrase)+' does not move existing step dates — use the date box on each step, or the button below.</div>';
+  openModal("Edit checklist details", c.name, body, function(){
+    var inst=readChips("inst"), unit=readChips("unit");
+    c.name=mv("fN").trim()||c.name;
+    c.start=mv("fS")||c.start;
+    if(inst!=="*" && inst.length) c.inst=inst[0];
+    if(unit!=="*" && unit.length) c.unit=unit[0];
+    save(); render(); toast("Checklist updated");
+    return true;
+  }, '<button class="btn ghost sm" data-act="reflow">Recalculate all dates from the '+esc(P.anchorPhrase)+'</button>');
+}
+
+function procEdit(id){
+  var isNew=!id;
+  var existing = isNew ? null : (S.processes.filter(function(x){return x.id===id;})[0]);
+  if(!isNew && !existing) return;
+  var f = existing || {label:"",anchorLabel:"",subjectLabel:"Name",anchorAhead:14,asksInst:false,asksUnit:true};
+  var body=
+    '<div class="q"><label class="f">What is this goal called</label>'+
+      '<input type="text" id="fL" value="'+esc(f.label||"")+'" placeholder="Morning routine">'+
+      '<div class="hint">This is what the New checklist picker will show.</div></div>'+
+    '<div class="q grid2">'+
+      '<div><label class="f">What the date is called</label>'+
+        '<input type="text" id="fA" value="'+esc(f.anchorLabel||"")+'" placeholder="Start date"></div>'+
+      '<div><label class="f">Usually how many days ahead</label>'+
+        '<input type="number" id="fD" value="'+(f.anchorAhead===undefined?14:f.anchorAhead)+'" min="0" max="730"></div>'+
+    '</div>'+
+    '<div class="q"><label class="f">What each checklist is about</label>'+
+      '<input type="text" id="fS" value="'+esc(f.subjectLabel||"Name")+'" placeholder="Name">'+
+      '<div class="hint">Usually a name or a day. Could be anything: a bill, an appointment, a room.</div></div>'+
+    '<div class="q"><label class="f">What should it ask</label>'+
+      chips("pasks",[{v:"unit",l:"Which unit"},{v:"inst",l:"Which category"}],
+            [].concat(f.asksInst?["inst"]:[], (f.asksUnit!==false)?["unit"]:[]),null)+
+      '<div class="hint">Only tick these if they change what has to be done. Units and categories are lists you keep in Settings; a question is skipped while its list is empty.</div></div>'+
+    '<div class="q"><label class="f">Yes / no questions</label>'+
+      '<textarea id="fQ" style="min-height:64px" placeholder="One per line, for example:&#10;Travelling abroad&#10;First time doing this">'+esc((f.flags||[]).map(function(x){return x.label;}).join("\n"))+'</textarea>'+
+      '<div class="hint">Optional. Each line becomes a switch on the New checklist form, and any step can be set to appear only when a switch is on. Leave empty if every checklist of this goal has the same steps.</div></div>'+
+    '<div class="hint">Once it exists, add its steps in the Step library — it gets its own section there.</div>';
+  openModal(isNew?"New goal":"Edit goal", isNew?"":esc(f.label), body, function(){
+    var label=mv("fL").trim(); if(!label){ toast("Give the goal a name"); return false; }
+    var asks=readChips("pasks"); if(asks==="*") asks=[];
+    var oldFlags=(existing && existing.flags)||[], newFlags=[];
+    mv("fQ").split("\n").forEach(function(line){
+      var lab=line.trim(); if(!lab) return;
+      if(newFlags.some(function(x){return x.label===lab;})) return;
+      var was=oldFlags.filter(function(x){return x.label===lab;})[0];
+      newFlags.push({k: was?was.k:("q_"+uid()), label:lab});
+    });
+    var goneKeys=oldFlags.filter(function(o){ return !newFlags.some(function(n){return n.k===o.k;}); }).map(function(o){return o.k;});
+    if(goneKeys.length && existing){
+      S.template.forEach(function(st){
+        if(stepProcess(st)===existing.id && st.when && st.when.length)
+          st.when=st.when.filter(function(k){return goneKeys.indexOf(k)===-1;});
+      });
+    }
+    var made=makeProcess({
+      id: existing?existing.id:null,
+      flags: newFlags,
+      label: label,
+      anchorLabel: mv("fA").trim()||"Date",
+      subjectLabel: mv("fS").trim()||"Name",
+      anchorAhead: Math.abs(parseInt(mv("fD"),10)||0),
+      asksInst: asks.indexOf("inst")!==-1,
+      asksUnit: asks.indexOf("unit")!==-1
+    });
+    if(existing){ S.processes[S.processes.indexOf(existing)]=made; }
+    else { S.processes.push(made); if(S.seededProcesses.indexOf(made.id)===-1) S.seededProcesses.push(made.id); }
+    rebuildProcesses(); save(); render();
+    toast(isNew?"Goal created — add its steps in the Step library":"Goal updated");
+    return true;
+  });
+}
+
+function procDel(id){
+  var pr=S.processes.filter(function(x){return x.id===id;})[0]; if(!pr) return;
+  var used=S.cases.filter(function(c){return caseProcess(c)===id;});
+  if(used.length){
+    alert("“"+pr.label+"” still has "+used.length+" checklist"+(used.length>1?"s":"")+
+      ". Archive or delete "+(used.length>1?"them":"it")+" first — deleting the goal would leave "+
+      (used.length>1?"them":"it")+" with nothing to render.");
+    return;
+  }
+  var steps=S.template.filter(function(x){return stepProcess(x)===id;}).length;
+  if(!confirm("Delete “"+pr.label+"”"+(steps?" and its "+steps+" step"+(steps>1?"s":""):"")+"?")) return;
+  S.processes=S.processes.filter(function(x){return x.id!==id;});
+  S.template=S.template.filter(function(x){return stepProcess(x)!==id;});
+  S.seededProcesses=S.seededProcesses.filter(function(x){return x!==id;});
+  rebuildProcesses(); save(); render(); toast("Goal deleted");
+}
+
+function recEdit(id){
+  var isNew=!id;
+  var r = isNew ? {id:"r"+uid(), t:"", note:"", freq:"weekly", dow:4, time:"", next:isoD(workday(addDays(today(),7)))}
+                : S.recurring.filter(function(x){return x.id===id;})[0];
+  if(!r) return;
+  var freqAtOpen=r.freq;
+  var body='<div class="q"><label class="f">What has to happen</label><input type="text" id="fT" value="'+esc(r.t)+'"></div>'+
+    '<div class="q"><label class="f">Detail</label><textarea id="fD">'+esc(r.note||"")+'</textarea></div>'+
+    '<div class="q grid3">'+
+    '<div><label class="f">Repeats</label><select id="fF">'+
+      ["daily","weekly","biweekly","monthly","quarterly","yearly"].map(function(f){
+        return '<option value="'+f+'" '+(r.freq===f?"selected":"")+'>'+f+'</option>'; }).join("")+'</select></div>'+
+    '<div><label class="f">Next time</label><input type="date" id="fNext" value="'+esc(r.next)+'" data-default="'+esc(r.next)+'"></div>'+
+    '<div><label class="f">Time of day</label><input type="time" id="fTime" value="'+esc(r.time||"")+'"></div></div>'+
+    '<div class="hint">Ticking it off rolls it forward to the next occurrence automatically.<br>'+
+    '<b>Daily</b> means every planned day, which is currently <b>'+esc(workDaysLabel())+'</b>. Change that in Settings and every daily task follows.</div>';
+  openModal(isNew?"Add a repeating task":"Edit repeating task","", body, function(){
+    var t=mv("fT").trim(); if(!t){ toast("Give it a name"); return false; }
+    r.t=t; r.note=mv("fD"); r.freq=mv("fF")||"weekly";
+    var _oldNext=r.next, _oldFreq=freqAtOpen;
+    r.next=mv("fNext")||r.next; r.time=mv("fTime");
+    if(r.next!==_oldNext || r.freq!==_oldFreq) r.anchor=r.next;
+    if(isNew) S.recurring.push(r);
+    save(); render(); toast(isNew?"Repeating task added":"Updated");
+    return true;
+  });
+}
+
+document.addEventListener("change",function(e){
+  syncFromStorage();
+  if(e.target && e.target.id==="syncDays"){ S.syncDays=parseInt(e.target.value,10)||3; save(); render(); toast("Reminder after "+S.syncDays+(S.syncDays===1?" day":" days")); return; }
+  if(e.target && e.target.id==="eodTime"){ S.eodTime=e.target.value||""; save(); toast(S.eodTime?"Check-in at "+S.eodTime:"No evening check-in"); return; }
+  if(e.target && e.target.id==="fF"){
+    var nx=document.getElementById("fNext");
+    if(nx && e.target.value==="daily" && nx.value===nx.dataset.default){
+      nx.value=isoD(nextWorkDay(today(),true));
+    }
+    return;
+  }
+  var el=e.target.closest("[data-act]"); if(!el) return;
+  if(el.dataset.act==="setdue"){
+    var c=S.cases.filter(function(x){return x.id===el.dataset.cid;})[0]; if(!c) return;
+    var s=findStep(c,el.dataset.sid); if(!s) return;
+    s.due=el.value; save(); render(); toast("Due "+fmtD(parseD(el.value)));
+  } else if(el.dataset.act==="setrnext"){
+    var r=S.recurring.filter(function(x){return x.id===el.dataset.id;})[0]; if(!r) return;
+    r.next=el.value; save(); render();
+  }
+});
+
+document.addEventListener("click",function(e){
+  syncFromStorage();
+  var nav=e.target.closest(".navbtn");
+  if(nav){
+    view=nav.dataset.v; if(view!=="new") draft=null;
+    if(view!=="data") bulkClear();
+    render(); return;
+  }
+  var el=e.target.closest("[data-act]"); if(!el) return;
+  var a=el.dataset.act;
+  if(el.tagName==="INPUT") return;
+
+  if(a==="msave"){ if(modalSave && modalSave()!==false) closeModal(); return; }
+  if(a==="mclose"){ tryCloseModal("cancel"); return; }
+
+  if(a==="open"){ openCase=el.dataset.cid; caseFrom=(view==="case"?caseFrom:view); view="case"; render(); }
+  else if(a==="back"){ view=caseFrom||"board"; render(); }
+  else if(a==="viewclosed"){ openCase=el.dataset.cid; caseFrom="data"; view="case"; render(); }
+  else if(a==="bulksel"){ bulkToggle(el.dataset.cid); }
+  else if(a==="bulkall"){
+    var ids=(el.dataset.ids||"").split(",").filter(Boolean);
+    var allOn=ids.every(function(id){return bulkSel[id];});
+    ids.forEach(function(id){ if(allOn) delete bulkSel[id]; else bulkSel[id]=1; });
+    render();
+  }
+  else if(a==="bulknone"){ bulkClear(); render(); }
+  else if(a==="bulkdel"){ bulkDelete(); }
+  else if(a==="w"){ draft[el.dataset.k]=el.dataset.v; renderWizard(); }
+  else if(a==="wt"){ draft[el.dataset.k]=!draft[el.dataset.k]; renderWizard(); }
+  else if(a==="wp"){ if(draft.process!==el.dataset.v) draft=newDraft(el.dataset.v); renderWizard(); }
+  else if(a==="wreset"){ draft=newDraft(draft?draft.process:(PROCESSES[0]||NO_PROCESS).id); renderWizard(); }
+  else if(a==="create"){ createCase(); }
+  else if(a==="tog"){ toggleStep(el.dataset.cid, el.dataset.sid); }
+  else if(a==="rdone"){ doneRecur(el.dataset.id); }
+  else if(a==="note"){ caseStepEdit(el.dataset.cid, el.dataset.sid); }
+  else if(a==="editstep"){ caseStepEdit(el.dataset.cid, el.dataset.sid); }
+  else if(a==="addstep"){ caseStepEdit(openCase, null); }
+  else if(a==="delstep"){ delStep(el.dataset.cid, el.dataset.sid); }
+  else if(a==="smove"){ moveStep(el.dataset.cid, el.dataset.sid, +el.dataset.dir); }
+  else if(a==="editcase"){ caseEdit(); }
+  else if(a==="editnotes"){ notesEdit(); }
+  else if(a==="reflow"){ reflow(); }
+  else if(a==="sync"){ syncCase(); }
+  else if(a==="libedit"){ libEdit(el.dataset.id); }
+  else if(a==="libadd"){ libEdit(null); }
+  else if(a==="libdel"){ libDel(el.dataset.id); }
+  else if(a==="libmove"){ libMove(el.dataset.id, +el.dataset.dir); }
+  else if(a==="libreset"){ libReset(); }
+  else if(a==="recadd"){ recEdit(null); }
+  else if(a==="recedit"){ recEdit(el.dataset.id); }
+  else if(a==="recdel"){ recDel(el.dataset.id); }
+  else if(a==="procadd"){ procEdit(null); }
+  else if(a==="procedit"){ procEdit(el.dataset.id); }
+  else if(a==="procdel"){ procDel(el.dataset.id); }
+  else if(a==="unitadd"){ addUnit(); }
+  else if(a==="unitdel"){ delUnit(el.dataset.u); }
+  else if(a==="togday"){
+    var n=parseInt(el.dataset.d,10);
+    var w=(S.workDays||[]).slice();
+    var at=w.indexOf(n);
+    if(at===-1) w.push(n); else w.splice(at,1);
+    if(!w.length){ toast("Keep at least one planned day"); return; }
+    S.workDays=w; save(); render();
+    var _off=offDayItems();
+    if(at!==-1 && _off.length) toast(_off.length+" open item"+(_off.length>1?"s are":" is")+" on a day you now have off \u2014 This week can move "+(_off.length>1?"them":"it"));
+  }
+  else if(a==="addcol"){ addCol(); }
+  else if(a==="delcol"){ delCol(el.dataset.col); }
+  else if(a==="archive"){ archiveCase(); }
+  else if(a==="cancelcase"){ cancelCase(); }
+  else if(a==="reopen"){ reopenCase(el.dataset.cid); }
+  else if(a==="cxr"){ var wf=document.getElementById("fWhy"); if(wf){ wf.value=el.dataset.v; wf.focus(); } }
+  else if(a==="unarchive"){ var c2=S.cases.filter(function(x){return x.id===el.dataset.cid;})[0]; if(c2){c2.archived=false;save();render();} }
+  else if(a==="delcase"){ delCase(el.dataset.cid); }
+  else if(a==="copyrow"){ copyRow(); }
+  else if(a==="diskpick"){ chooseDataFile(); }
+  else if(a==="diskopen"){ openDataFile(); }
+  else if(a==="diskre"){ reconnectDisk(); }
+  else if(a==="diskoff"){ disconnectDisk(); }
+  else if(a==="taddp"){ taskEdit(null,null); }
+  else if(a==="taddc"){ taskEdit(null, el.dataset.cid); }
+  else if(a==="tedit"){ taskEdit(el.dataset.id,null); }
+  else if(a==="tdel"){ delTask(el.dataset.id); }
+  else if(a==="ttog"){ toggleTask(el.dataset.id); }
+  else if(a==="tstog"){ toggleTaskStep(el.dataset.id, el.dataset.sid); }
+  else if(a==="moveoff"){ moveOffDays(); }
+  else if(a==="starter"){ addStarter(el.dataset.id); }
+  else if(a==="gosettings"){ view="settings"; render(); }
+  else if(a==="golib"){ view="lib"; render(); }
+  else if(a==="gonew"){ view="new"; draft=null; render(); }
+  else if(a==="groupadd"){ addGroup(); }
+  else if(a==="groupdel"){ delGroup(el.dataset.g); }
+  else if(a==="reloadtab"){ location.reload(); }
+  else if(a==="eod"){
+    if(modalDirty()){ toast("Finish or cancel the open window first"); return; }
+    eodModal();
+  }
+  else if(a==="done"){ view="done"; render(); }
+  else if(a==="calgo"){ view="cal"; render(); }
+  else if(a==="calprev"||a==="calnext"){ calMonth=new Date(calMonth.getFullYear(), calMonth.getMonth()+(a==="calnext"?1:-1), 1); render(); }
+  else if(a==="caltoday"){ calMonth=null; calSel=null; render(); }
+  else if(a==="calday"){ calSel=el.dataset.d; var _cd=parseD(calSel); calMonth=new Date(_cd.getFullYear(), _cd.getMonth(), 1); render(); }
+  else if(a==="taddd"){ taskEdit(null,null,el.dataset.d); }
+  else if(a==="doneback"){ view="week"; render(); }
+  else if(a==="unstep"){ putBackStep(el.dataset.cid, el.dataset.sid); }
+  else if(a==="untask"){ putBackTask(el.dataset.id); }
+  else if(a==="unrec"){ putBackRecur(el.dataset.id); }
+  else if(a==="eoddismiss"){ S.eodDone=isoD(today()); S.eodSnooze=null; save(); alarmEl.classList.remove("on"); alarmShowing=null; renderAlarm(); }
+  else if(a==="eodsnooze"){
+    var _u=new Date(Date.now()+parseInt(el.dataset.m,10)*60000);
+    S.eodSnooze=_u.toISOString(); save(); alarmEl.classList.remove("on"); alarmShowing=null; renderAlarm();
+    toast("Snoozed until "+fmtTime(_u));
+  }
+  else if(a==="alsnooze"){ snoozeTask(el.dataset.id, parseInt(el.dataset.m,10)); }
+  else if(a==="aldismiss"){ dismissAlarm(el.dataset.id); }
+  else if(a==="aldone"){ dismissAlarm(el.dataset.id); toggleTask(el.dataset.id); }
+  else if(a==="alopen"){
+    if(modalDirty()){ toast("Finish or cancel the open window first"); return; }
+    dismissAlarm(el.dataset.id); taskEdit(el.dataset.id,null);
+  }
+  else if(a==="export"){ doExport(); }
+  else if(a==="exportdl"){ doExport(true); }
+  else if(a==="multitoggle"){
+    S.multiDevice=!S.multiDevice; if(S.multiDevice && !S.syncDays) S.syncDays=3; S.syncSnooze=null; save(); render();
+    toast(S.multiDevice?"Sync reminder on":"Sync reminder off");
+  }
+  else if(a==="syncsnooze"){ S.syncSnooze=isoD(today()); save(); render(); toast("I will remind you tomorrow"); }
+  else if(a==="mergefile"){ document.getElementById("fileMerge").click(); }
+  else if(a==="import"){ document.getElementById("fileIn").click(); }
+  else if(a==="importreplace"){ document.getElementById("fileRep").click(); }
+  else if(a==="undoimport"){ undoImport(); }
+});
+
+document.addEventListener("blur",function(e){
+  var el=e.target.closest?e.target.closest("[data-act=rename]"):null; if(!el) return;
+  var col=S.columns.filter(function(c){return c.id===el.dataset.col;})[0];
+  if(col){ col.name=(el.textContent||"Untitled").trim()||"Untitled"; save(); }
+},true);
+document.getElementById("qExport").addEventListener("click",function(){ doExport(); });
+document.getElementById("fileMerge").addEventListener("change",doImport);
+
+function createCase(){
+  if(!draft||!draftReady()) return;
+  var c={ id:uid(), process:draft.process, name:draft.name.trim(),
+    inst:draft.inst, unit:draft.unit,
+    start:draft.start, created:isoD(today()),
+    notes:(draft.notes||"").trim(),
+    col:S.columns[0].id, archived:false };
+  flagsFor(draft.process).forEach(function(f){ c[f.k]=!!draft[f.k]; });
+  c.steps=buildSteps(c);
+  S.cases.push(c); draft=null; save();
+  openCase=c.id; caseFrom="board"; view="case"; render();
+  toast("Checklist built — "+c.steps.length+" steps");
+}
+function toggleStep(cid,sid){
+  var c=S.cases.filter(function(x){return x.id===cid;})[0]; if(!c) return;
+  var s=findStep(c,sid); if(!s) return;
+  if(!s.done && isBlocked(c,s)) return;
+  s.done=!s.done; s.doneAt=s.done?isoD(today()):null;
+  var p=caseProgress(c);
+  var dc=S.columns.filter(function(x){return /complet|done|finish/i.test(x.name);})[0];
+  if(p.total && p.done===p.total && dc){ if(c.col!==dc.id) c.colWas=c.col; c.col=dc.id; }
+  else if(!s.done && dc && c.col===dc.id && c.colWas){
+    if(S.columns.some(function(x){return x.id===c.colWas;})) c.col=c.colWas;
+    delete c.colWas;
+  }
+  save(); render();
+}
+function delStep(cid,sid){
+  var c=S.cases.filter(function(x){return x.id===cid;})[0]; if(!c) return;
+  var s=findStep(c,sid); if(!s) return;
+  if(!confirm("Remove \""+s.t+"\" from "+c.name+"?")) return;
+  c.steps=c.steps.filter(function(x){return x.id!==sid;});
+  c.steps.forEach(function(x){ if(x.needs) x.needs=x.needs.filter(function(n){return n!==sid;}); });
+  save(); render(); toast("Step removed");
+}
+function moveStep(cid,sid,dir){
+  var c=S.cases.filter(function(x){return x.id===cid;})[0]; if(!c) return;
+  var i=c.steps.findIndex(function(x){return x.id===sid;});
+  var j=i+dir; if(i<0||j<0||j>=c.steps.length) return;
+  var tmp=c.steps[i]; c.steps[i]=c.steps[j]; c.steps[j]=tmp;
+  save(); render();
+}
+function syncCase(){
+  var c=S.cases.filter(function(x){return x.id===openCase;})[0]; if(!c) return;
+  var start=parseD(c.start), created=parseD(c.created)||today(), n=0;
+  S.template.forEach(function(t){
+    if(!appliesTo(t,c) || findStep(c,t.id)) return;
+    c.steps.push({ id:t.id, t:t.t, d:t.d, owner:t.owner, phase:t.phase||null,
+      needs:t.needs?t.needs.slice():null, due:isoD(computeDue(t,start,created)),
+      done:false, doneAt:null, note:"" });
+    n++;
+  });
+  save(); render(); toast(n+" step"+(n===1?"":"s")+" added");
+}
+function reflow(){
+  var c=S.cases.filter(function(x){return x.id===openCase;})[0]; if(!c) return;
+  if(!confirm("Recalculate every step's date from the start date? Notes and ticks are kept.")) return;
+  var start=parseD(c.start), created=parseD(c.created)||today();
+  c.steps.forEach(function(s){
+    var t=S.template.filter(function(x){return x.id===s.id;})[0];
+    if(t) s.due=isoD(computeDue(t,start,created));
+  });
+  save(); closeModal(); render(); toast("Dates recalculated");
+}
+function libDel(id){
+  var s=S.template.filter(function(x){return x.id===id;})[0]; if(!s) return;
+  if(!confirm("Delete \""+s.t+"\" from the library? Checklists already running keep their copy.")) return;
+  S.template=S.template.filter(function(x){return x.id!==id;});
+  S.template.forEach(function(x){ if(x.needs) x.needs=x.needs.filter(function(n){return n!==id;}); });
+  save(); render(); toast("Deleted from the library");
+}
+function libMove(id,dir){
+  var i=S.template.findIndex(function(x){return x.id===id;});
+  if(i<0) return;
+  var pid=stepProcess(S.template[i]), ph=S.template[i].phase||"";
+  var j=i+dir;
+  while(j>=0 && j<S.template.length &&
+        (stepProcess(S.template[j])!==pid || (S.template[j].phase||"")!==ph)) j+=dir;
+  if(j<0||j>=S.template.length) return;
+  var t=S.template[i]; S.template[i]=S.template[j]; S.template[j]=t;
+  save(); render();
+}
+function libReset(){
+  if(!confirm("Replace the library with the original steps? Your edits and added steps will be lost. Goals you created yourself, and their steps, are kept. Checklists already running are not affected.")) return;
+  var his=S.template.filter(function(x){ return !isBuiltin(stepProcess(x)); });
+  S.template=JSON.parse(JSON.stringify(DEFAULT_STEPS)).concat(his);
+  S.seededProcesses=PROCESSES.map(function(P){ return P.id; });
+  save(); render(); toast("Library restored");
+}
+function recDel(id){
+  var r=S.recurring.filter(function(x){return x.id===id;})[0]; if(!r) return;
+  if(!confirm("Delete \""+r.t+"\"?")) return;
+  S.recurring=S.recurring.filter(function(x){return x.id!==id;});
+  save(); render();
+}
+function doneRecur(id){
+  var r=S.recurring.filter(function(x){return x.id===id;})[0]; if(!r) return;
+  var prev={next:r.next, anchor:r.anchor||null, lastDone:r.lastDone||null};
+  r.lastDone=isoD(today());
+  advance(r); logRecur(r,prev); save(); render(); toast("Next: "+fmtD(parseD(r.next)));
+}
+function addUnit(){
+  var i=document.getElementById("newUnit"); if(!i) return;
+  var v=i.value.trim(); if(!v) return;
+  if(S.units.indexOf(v)!==-1){ toast("Already there"); return; }
+  S.units.push(v); i.value=""; save(); render(); toast("Unit added");
+}
+function addGroup(){
+  var i=document.getElementById("newGroup"); if(!i) return;
+  var v=i.value.trim(); if(!v) return;
+  if(v==="*"){ toast("Pick another name"); return; }
+  if(S.groups.indexOf(v)!==-1){ toast("Already there"); return; }
+  S.groups.push(v); i.value=""; save(); render(); toast("Category added");
+}
+function delGroup(g){
+  var n=S.template.filter(function(x){return x.inst===g;}).length;
+  if(!confirm("Remove the category \u201c"+g+"\u201d?"+
+     (n?"\n\n"+n+" step"+(n>1?"s are":" is")+" limited to it and will apply to all categories instead.":"")+
+     "\n\nCases already using it keep it.")) return;
+  S.groups=S.groups.filter(function(x){return x!==g;});
+  S.template.forEach(function(x){ if(x.inst===g) x.inst="*"; });
+  save(); render();
+}
+function delUnit(u){
+  if(!confirm("Remove "+u+" from the unit list? Checklists already using it keep it.")) return;
+  S.units=S.units.filter(function(x){return x!==u;});
+  save(); render();
+}
+function addCol(){
+  var n=prompt("Column name:",""); if(!n||!n.trim()) return;
+  S.columns.push({id:uid(),name:n.trim()}); save(); render();
+}
+function delCol(id){
+  if(S.columns.length<=1) return;
+  var inc=S.cases.filter(function(c){return c.col===id && isActive(c);});
+  if(inc.length && !confirm(inc.length+" checklist(s) will move to the first column. Delete this column?")) return;
+  var first=S.columns.filter(function(c){return c.id!==id;})[0];
+  S.cases.forEach(function(c){ if(c.col===id) c.col=first.id; });
+  S.columns=S.columns.filter(function(c){return c.id!==id;});
+  save(); render();
+}
+var DEFAULT_CANCEL_REASONS = ["Plans changed","Not needed any more","Started it by mistake"];
+
+function cancelCase(){
+  var c=S.cases.filter(function(x){return x.id===openCase;})[0]; if(!c) return;
+  var P=proc(caseProcess(c));
+  var reasons=P.cancelReasons||DEFAULT_CANCEL_REASONS;
+  var body='<div class="q"><label class="f">Why is it stopping?</label>'+
+    '<input type="text" id="fWhy" placeholder="A few words is enough" value="">'+
+    '<div class="opts" style="margin-top:9px">';
+  reasons.forEach(function(r){
+    body+='<button type="button" class="opt sm" data-act="cxr" data-v="'+esc(r)+'">'+esc(r)+'</button>';
+  });
+  body+='</div><div class="hint">The checklist stops immediately — its steps leave This week and the board. '+
+    'Nothing is deleted, and you can reopen it from Backup if it starts up again.</div></div>';
+  openModal("Cancel this checklist", c.name, body, function(){
+    c.cancelled=true;
+    c.cancelledAt=isoD(today());
+    c.cancelReason=mv("fWhy").trim();
+    save(); openCase=null; view="board"; render();
+    toast("Cancelled — "+c.name);
+    return true;
+  }, null, {save:"Stop this checklist", close:"Never mind"});
+}
+
+function reopenCase(cid){
+  var c=S.cases.filter(function(x){return x.id===cid;})[0]; if(!c) return;
+  c.cancelled=false; c.cancelledAt=null; c.cancelReason="";
+  save(); render(); toast("Reopened — "+c.name);
+}
+
+function archiveCase(){
+  var c=S.cases.filter(function(x){return x.id===openCase;})[0]; if(!c) return;
+  if(!confirm("Archive "+c.name+"? It stays in your data and can be restored from Backup.")) return;
+  c.archived=true; save(); view="board"; render();
+}
+function delCase(cid){
+  var c=S.cases.filter(function(x){return x.id===cid;})[0]; if(!c) return;
+  if(!confirm("Permanently delete "+c.name+"? This cannot be undone.")) return;
+  S.cases=S.cases.filter(function(x){return x.id!==cid;});
+  save(); render();
+}
+function copyRow(){
+  var c=S.cases.filter(function(x){return x.id===openCase;})[0]; if(!c) return;
+  var p=caseProgress(c), nx=nextOpen(c);
+  var row=[c.name,c.inst||"",c.unit||"",c.start,p.done+"/"+p.total,(nx?nx.t:"complete")].join("\t");
+  var ta=document.createElement("textarea");
+  ta.value=row; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); toast("Row copied \u2014 paste it into a spreadsheet"); }
+  catch(x){ prompt("Copy this row:",row); }
+  document.body.removeChild(ta);
+}
+/* Export: on a phone or tablet, hand the file to the share sheet (Save to Files, iCloud
+   Drive, AirDrop...). Anywhere that cannot, or if sharing fails, download it as before. */
+function backupInfo(){
+  var snap=Object.assign({}, S, {lastExport:isoD(today()), lastSync:new Date().toISOString(),
+    appVersion:APP_VERSION, appVersionDate:APP_VERSION_DATE});
+  return {name:"tracker-backup-"+isoD(today())+".json", text:JSON.stringify(snap,null,2)};
+}
+function shareFile(info){
+  try{
+    if(!navigator.share || !navigator.canShare) return null;
+    var touch=(window.matchMedia && matchMedia("(pointer:coarse)").matches) ||
+      /iPhone|iPad|iPod|Android/.test(navigator.userAgent||"") ||
+      (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+    if(!touch) return null;
+    var types=["application/json","text/plain"];
+    for(var i=0;i<types.length;i++){
+      var f=new File([info.text], info.name, {type:types[i]});
+      if(navigator.canShare({files:[f]})) return f;
+    }
+  }catch(x){}
+  return null;
+}
+function canShareFiles(){ return !!shareFile({name:"x.json", text:"{}"}); }
+function downloadBackup(info){
+  var blob=new Blob([info.text],{type:"application/json"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=info.name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
+}
+function markSynced(exported){
+  S.lastSync=new Date().toISOString();
+  if(exported){ S.lastExport=isoD(today()); S.appVersion=APP_VERSION; S.appVersionDate=APP_VERSION_DATE; }
+  save();
+}
+function doExport(forceDownload){
+  var info=backupInfo();
+  var file=(forceDownload===true) ? null : shareFile(info);
+  if(file){
+    navigator.share({files:[file], title:"Tracker backup"})
+      .then(function(){ markSynced(true); render(); toast("Backup saved — merge it on your other device"); })
+      .catch(function(e){
+        if(e && e.name==="AbortError"){ toast("Export cancelled — nothing was saved"); return; }
+        downloadBackup(info); markSynced(true); render(); toast("Sharing did not work, so the backup was downloaded");
+      });
+    return;
+  }
+  downloadBackup(info); markSynced(true); render(); toast("Backup downloaded");
+}
+var PREMERGE_KEY=KEY+"_premerge";
+function keepUndo(){ try{ localStorage.setItem(PREMERGE_KEY, JSON.stringify(S)); }catch(x){} }
+function hasUndo(){ try{ return !!localStorage.getItem(PREMERGE_KEY); }catch(x){ return false; } }
+function undoImport(){
+  var raw; try{ raw=localStorage.getItem(PREMERGE_KEY); }catch(x){}
+  if(!raw){ toast("Nothing to undo"); return; }
+  if(!confirm("Put everything back the way it was before the last import? Changes made since then will be lost.")) return;
+  var d; try{ d=JSON.parse(raw); }catch(x){ toast("The saved copy could not be read"); return; }
+  d.rev=Math.max(d.rev||0,S.rev||0);
+  S=d; load2(); save();
+  try{ localStorage.removeItem(PREMERGE_KEY); }catch(x){}
+  render(); toast("Import undone");
+}
+function syncSummary(r){
+  var p=[];
+  if(r.added) p.push(r.added+" new");
+  if(r.updated) p.push(r.updated+" changed");
+  if(r.removed) p.push(r.removed+" removed");
+  var t="From the file: "+(p.join(", ")||"nothing new")+".";
+  if(r.kept) t+="\nKept what is already here, because it is newer: "+r.kept+".";
+  return t;
+}
+function doImport(e){
+  var replace=e.target.id==="fileRep";
+  var f=e.target.files&&e.target.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){
+    var d;
+    try{ d=JSON.parse(r.result); if(!d||!d.cases) throw new Error("bad"); }
+    catch(x){ alert("That file could not be read as a backup. Pick a file exported from this app."); return; }
+    if(replace){
+      if(!confirm("Replace everything currently in the app with this backup?")) return;
+      keepUndo(); d.rev=Math.max(d.rev||0,S.rev||0);
+      var mine={multiDevice:S.multiDevice, syncDays:S.syncDays, syncSnooze:S.syncSnooze};
+      S=d; load2();
+      Object.keys(mine).forEach(function(k){ if(mine[k]!==undefined) S[k]=mine[k]; });
+      S.lastSync=new Date().toISOString();
+      save(); render(); toast("Backup restored"); return;
+    }
+    var m;
+    try{ m=syncMerge(S,d); }
+    catch(x){ alert("The merge did not work, so nothing was changed.\n\n"+x.message); return; }
+    var rp=m.report, total=rp.added+rp.updated+rp.removed;
+    if(!m.changed){ markSynced(false); render(); toast("Already up to date — nothing to merge"); return; }
+    if(total && !confirm("Merge this backup into what is on this device?\n\n"+syncSummary(rp)+"\n\nYou can undo it from Backup.")) return;
+    keepUndo();
+    S=m.merged; load2(); S.lastSync=new Date().toISOString(); save(); render();
+    toast(total ? "Merged — "+syncSummary(rp).split("\n")[0].replace("From the file: ","") : "Already up to date");
+  };
+  r.readAsText(f); e.target.value="";
+}
+function load2(){
+  var b=blankState();
+  if(!S.units) S.units=b.units;
+  if(!S.columns) S.columns=b.columns;
+  if(!S.recurring) S.recurring=b.recurring;
+  if(!S.template) S.template=b.template;
+  if(!S.cases) S.cases=[];
+  migrate();
+  pruneDone();
+  syncReset();
+}
+
+(function(){
+  var bv=document.getElementById("brandVer");
+  if(bv) bv.textContent="v"+APP_VERSION;
+})();
+load(); render(); restoreDisk(); renderAlarm(); checkWriterVersion();
+
+/* ---- PWA: service worker, install prompt, update prompt, persistent storage ---- */
+(function(){
+  var bar=document.getElementById("pwaBar"), msg=document.getElementById("pwaMsg"),
+      go=document.getElementById("pwaGo"), no=document.getElementById("pwaNo");
+  var onGo=null;
+  function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+  function show(text,label,fn){ msg.textContent=text; go.textContent=label; go.style.display=fn?"":"none"; onGo=fn; bar.classList.add("on"); }
+  function hide(){ bar.classList.remove("on"); }
+  go.addEventListener("click",function(){ var f=onGo; hide(); if(f) f(); });
+  no.addEventListener("click",function(){ hide(); lsSet("tracker_pwa_nag",String(Date.now())); });
+
+  var standalone=(window.matchMedia&&matchMedia("(display-mode:standalone)").matches)||navigator.standalone===true;
+  var ua=navigator.userAgent||"";
+  var iOS=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  var nagged=Number(lsGet("tracker_pwa_nag")||0), quiet=Date.now()-nagged<14*864e5;
+
+  // Ask the browser not to evict our storage. Quietly ignored where unsupported.
+  if(navigator.storage&&navigator.storage.persist){ navigator.storage.persist().catch(function(){}); }
+
+  // Install: Chrome / Edge give us an event; Safari has no event, so explain the menu.
+  var deferred=null;
+  window.addEventListener("beforeinstallprompt",function(e){
+    e.preventDefault(); deferred=e;
+    if(!standalone&&!quiet) show("Install Tracker as an app?","Install",function(){ deferred.prompt(); deferred=null; });
+  });
+  window.addEventListener("appinstalled",function(){ hide(); });
+  if(!standalone&&!quiet&&iOS){
+    setTimeout(function(){ show("To install: tap Share, then \u201cAdd to Home Screen\u201d. That also keeps iOS from clearing your data.","",null); },1500);
+  }
+
+  // Service worker (needs https or localhost; skipped when opened as a plain file)
+  if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
+    var hadController=!!navigator.serviceWorker.controller;
+    window.addEventListener("load",function(){
+      navigator.serviceWorker.register("sw.js").then(function(reg){
+        function offer(w){ show("A new version of Tracker is ready.","Update",function(){ w.postMessage("skipWaiting"); }); }
+        if(reg.waiting&&navigator.serviceWorker.controller) offer(reg.waiting);
+        reg.addEventListener("updatefound",function(){
+          var w=reg.installing; if(!w) return;
+          w.addEventListener("statechange",function(){
+            if(w.state==="installed"&&navigator.serviceWorker.controller) offer(w);
+          });
+        });
+        // check for a new version whenever the app comes back to the foreground
+        document.addEventListener("visibilitychange",function(){ if(!document.hidden) reg.update().catch(function(){}); });
+      }).catch(function(){});
+      var reloaded=false;
+      navigator.serviceWorker.addEventListener("controllerchange",function(){
+        if(reloaded||!hadController) return; reloaded=true; location.reload();
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
